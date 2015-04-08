@@ -2,11 +2,13 @@
 {-# LANGUAGE FunctionalDependencies #-}
 module Graphics.Oedel.Attr where
 
+import Graphics.Oedel.Color (Color)
+
 {-# ANN module "HLint: ignore Use String" #-}
 
 -- | @p@ is a styling description that allows a color of type @c@ to be
 -- specified.
-class AttrColor c p | p -> c where
+class Color c => AttrColor c p | p -> c where
 
     -- | Applies the given color to a styling description.
     color :: c -> p -> p

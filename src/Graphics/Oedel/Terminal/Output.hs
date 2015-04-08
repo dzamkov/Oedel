@@ -15,7 +15,7 @@ import Control.Applicative
 -- REPL output.
 printFlow :: Flow Identity -> IO ()
 printFlow flow = runDrawInline (\width ->
-    let alignment = Flow.fromAlignment Oedel.Left
+    let alignment = Oedel.left
         (Identity height, paint) = Flow.place flow alignment (pure width)
         context = pure (fst defaultAppearance, (0, 0))
     in (height, runIdentity $ fromPaint $ paint context))
@@ -24,7 +24,9 @@ printFlow flow = runDrawInline (\width ->
 printBlock :: Block Identity -> IO ()
 printBlock block = runDrawInline (\terminalWidth ->
     let (minWidth, minHeight, paint) = Block.place block width height
-        width = max 6 <$> min terminalWidth <$> minWidth
+        width = max 6 <$> minWidth
         height = max 3 <$> minHeight
         context = pure (Just $ fst defaultAppearance, (0, 0))
     in (runIdentity height, runIdentity $ fromPaint $ paint context))
+
+-- TODO: don't allow flows and blocks to be shrunk below their minimum size.

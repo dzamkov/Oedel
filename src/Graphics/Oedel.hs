@@ -1,6 +1,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 module Graphics.Oedel where
 
+import Graphics.Oedel.Color (Color)
 import Control.Reactive
 import Data.Monoid
 
@@ -87,7 +88,7 @@ class Block a => BlockSize w h a | a -> w h where
 
 -- | @a@ is a block-like figure that allows the construction of solid-color
 -- blocks.
-class Block a => BlockSolid c a | a -> c where
+class (Color c, Block a) => BlockSolid c a | a -> c where
 
     -- | Constructs a solid-color block of the given color.
     solid :: c -> a
@@ -128,19 +129,26 @@ class Block a => BlockBorder p a | a -> p where
     -- | Applies a border to a block.
     withBorder :: (p -> p) -> a -> a
 
--- | Identifies a possible alignment for the lines within a flow.
-data Alignment
-    = Left
-    | Center
-    | Right
-    | Justify
+-- | @l@ is a possible alignment for lines within a flow.
+class Alignment l where
+
+    -- | Lines are aligned to the left of their container.
+    left :: l
+
+    -- | Lines are aligned in the center of their container.
+    center :: l
+
+    -- | Lines are aligned to the right of their container.
+    right :: l
 
 -- | @a@ is a 'Flow' figure that can be converted into a 'Block' figure of
 -- type @b@.
-class (Flow a, Block b) => FlowToBlock a b | a -> b, b -> a where
+class (Alignment l, Flow a, Block b)
+    => FlowToBlock l a b | a -> l b, b -> l a where
 
-    -- | Converts a flow into a translucent block using the given alignment.
-    blockify :: Alignment -> a -> b
+        -- | Converts a flow into a translucent block using the given
+        --alignment.
+        blockify :: l -> a -> b
 
 -- | @w a@ is a description of a interactive figure whose running instances
 -- produce a value of type @a@.

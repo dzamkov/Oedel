@@ -160,10 +160,9 @@ instance (Applicative f) => Oedel.BlockBorder BorderStyle (Block f) where
             r = Oedel.setWidth r' base
             b = Oedel.setHeight b' base
         in t === l ||| block ||| r === b
-instance (Applicative f) => Oedel.FlowToBlock (Flow f) (Block f) where
-    blockify alignment' flow =
-        let alignment = Flow.fromAlignment alignment'
-        in Block {
+instance (Applicative f) => Oedel.FlowToBlock
+    Flow.Alignment (Flow f) (Block f) where
+        blockify alignment flow = Block {
             freeWidth = 1,
             freeHeight = 1,
             opacity = Dependent,

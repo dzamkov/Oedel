@@ -6,11 +6,7 @@ module Graphics.Oedel.Terminal.Flow (
     Flow,
     minWidth,
     place,
-    Alignment,
-    left,
-    center,
-    right,
-    fromAlignment
+    Alignment
 ) where
 
 import Prelude hiding (break)
@@ -75,6 +71,11 @@ newtype Alignment = Alignment {
 
     }
 
+instance Oedel.Alignment Alignment where
+    left = compact (const 0)
+    right = compact id
+    center = compact (Width . (`div` 2) . cells)
+
 -- | Constructs an alignment which places items as close together as possible.
 -- The given function will determine the offset of the first item in the line
 -- given the maximum offset.
@@ -87,25 +88,6 @@ compact offset = Alignment $ \target line width ->
             let nX = x + width + space
             put nX
             return x) line
-
--- | Aligns all items in a line to the leftmost possible offset.
-left :: Alignment
-left = compact (const 0)
-
--- | Aligns all items in a line to the rightmost possible offset.
-right :: Alignment
-right = compact id
-
--- | Aligns all items compactly in the center.
-center :: Alignment
-center = compact (Width . (`div` 2) . cells)
-
--- | Converts a 'Oedel.Alignment' into an alignment a flow can use.
-fromAlignment :: Oedel.Alignment -> Alignment
-fromAlignment Oedel.Left = left
-fromAlignment Oedel.Center = center
-fromAlignment Oedel.Right = right
-fromAlignment Oedel.Justify = center -- TODO
 
 -- | An applicative interface for flow layout, defined by 'runLayout', 'spaceL'
 -- and 'wordL'.

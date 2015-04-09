@@ -31,6 +31,7 @@ instance Monoid VarLength where
 -- | Converts a 'VarLength' to its CSS representation.
 varLengthToCss :: VarLength -> Builder
 varLengthToCss (VarLength base 0) = lengthToCss base
+varLengthToCss (VarLength 0 p) = fromText (pack $ show $ p * 100.0) <> "%"
 varLengthToCss (VarLength base p) = "calc(" <> lengthToCss base <> " + " <>
     fromText (pack $ show $ p * 100.0) <> "%)"
 

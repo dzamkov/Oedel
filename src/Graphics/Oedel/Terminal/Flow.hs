@@ -10,7 +10,7 @@ module Graphics.Oedel.Terminal.Flow (
 ) where
 
 import Prelude hiding (break)
-import qualified Graphics.Oedel as Oedel
+import qualified Graphics.Oedel.Layout as Layout
 import Graphics.Oedel.Attr
 import Graphics.Oedel.Terminal.Base
 import Graphics.Oedel.Terminal.Paint
@@ -43,20 +43,20 @@ instance Monoid (Flow f) where
     mappend (Flow px (xi : xis)) y = Flow px (go xi xis y) where
         go (d, w, s) [] (Flow py yi) = (d, w, s + py) : yi
         go xi (nXi : xis) y = xi : go nXi xis y
-instance Applicative f => Oedel.Flow (Flow f) where
+instance Applicative f => Layout.Flow (Flow f) where
     tight = error "'tight' not implemented" -- TODO
-instance Applicative f => Oedel.FlowSpace Width (Flow f) where
+instance Applicative f => Layout.FlowSpace Width (Flow f) where
     weakSpace width = Flow width []
     strongSpace width = res where
         paint (back, offset) = Draw.space back offset width
         res = Flow 0 [(toPaint . (paint <$>), pure width, 0)]
-instance Applicative f => Oedel.FlowText TextStyle (Flow f) where
+instance Applicative f => Layout.FlowText TextStyle (Flow f) where
     tightText style str = res where
         fore = textColor (style defaultStyle)
         width = Width $ length str
         paint (back, offset) = Draw.string (back, fore) offset str
         res = Flow 0 [(toPaint . (paint <$>), pure width, 0)]
-    naturalSpace _ = Oedel.space 1
+    naturalSpace _ = Layout.space 1
 
 -- | Describes a possible alignment of flow items within a line.
 newtype Alignment = Alignment {
@@ -71,7 +71,7 @@ newtype Alignment = Alignment {
 
     }
 
-instance Oedel.Alignment Alignment where
+instance Layout.Alignment Alignment where
     left = compact (const 0)
     right = compact id
     center = compact (Width . (`div` 2) . cells)

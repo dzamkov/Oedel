@@ -16,12 +16,13 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Graphics.Oedel.Core
+  exposed-modules:     Graphics.Oedel
                        Control.Reactive
                        Control.Reactive.IO
-                       Graphics.Oedel
+                       Graphics.Oedel.Color
                        Graphics.Oedel.Attr
-                       Graphics.Oedel.Builder
+                       Graphics.Oedel.Layout
+                       Graphics.Oedel.Widget
   -- other-modules:       
   -- other-extensions:    
   build-depends:       base >=4.7 && <4.8,

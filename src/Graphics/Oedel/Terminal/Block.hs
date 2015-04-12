@@ -6,8 +6,8 @@ module Graphics.Oedel.Terminal.Block (
     BorderStyle
 ) where
 
-import Graphics.Oedel ((===), (|||))
-import qualified Graphics.Oedel as Oedel
+import Graphics.Oedel.Layout ((===), (|||))
+import qualified Graphics.Oedel.Layout as Layout
 import qualified Graphics.Oedel.Attr as Attr
 import qualified Graphics.Oedel.Terminal.Draw as Draw
 import Graphics.Oedel.Terminal.Base
@@ -56,7 +56,7 @@ data Block f = Block {
         -> (f Width, f Height,
             f (Maybe Color, Point) -> Paint f) }
 
-instance (Applicative f) => Oedel.Block (Block f) where
+instance (Applicative f) => Layout.Block (Block f) where
     (|||) left right =
         let rFreeWidth = freeWidth left + freeWidth right
         in Block {
@@ -98,7 +98,7 @@ instance (Applicative f) => Oedel.Block (Block f) where
     compact block = block {
         freeWidth = 0,
         freeHeight = 0 }
-instance (Applicative f) => Oedel.BlockSize Width Height (Block f) where
+instance (Applicative f) => Layout.BlockSize Width Height (Block f) where
     setWidth _ block | freeWidth block == 0 = block
     setWidth width block = block {
         freeWidth = 0,
@@ -113,13 +113,13 @@ instance (Applicative f) => Oedel.BlockSize Width Height (Block f) where
             let (mw, mh', paint) = place block w h
                 mh = max height <$> mh'
             in (mw, mh, paint) }
-instance (Applicative f) => Oedel.BlockSolid Color (Block f) where
+instance (Applicative f) => Layout.BlockSolid Color (Block f) where
     solid color = Block {
         freeWidth = 1,
         freeHeight = 1,
         opacity = Opaque (Just color),
         place = \w h -> (pure 0, pure 0, paintSolid (pure color) w h) }
-instance (Applicative f) => Oedel.BlockTrans (Block f) where
+instance (Applicative f) => Layout.BlockTrans (Block f) where
     clear = Block {
         freeWidth = 1,
         freeHeight = 1,
@@ -150,17 +150,17 @@ instance (Applicative f) => Oedel.BlockTrans (Block f) where
                         mw = max <$> hmw <*> lmw
                         mh = max <$> hmh <*> lmh
                     in (mw, mh, \c -> hPaint c `over` lPaint c) }
-instance (Applicative f) => Oedel.BlockBorder BorderStyle (Block f) where
+instance (Applicative f) => Layout.BlockBorder BorderStyle (Block f) where
     withBorder style' block =
         let style = style' Attr.defaultStyle
             (l', t', r', b') = borderMargin style
-            base = Oedel.solid $ borderColor style
-            l = Oedel.setWidth l' base
-            t = Oedel.setHeight t' base
-            r = Oedel.setWidth r' base
-            b = Oedel.setHeight b' base
+            base = Layout.solid $ borderColor style
+            l = Layout.setWidth l' base
+            t = Layout.setHeight t' base
+            r = Layout.setWidth r' base
+            b = Layout.setHeight b' base
         in t === l ||| block ||| r === b
-instance (Applicative f) => Oedel.FlowToBlock
+instance (Applicative f) => Layout.FlowToBlock
     Flow.Alignment (Flow f) (Block f) where
         blockify alignment flow = Block {
             freeWidth = 1,

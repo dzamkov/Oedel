@@ -2,8 +2,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Graphics.Oedel.Html.Block where
 
-import Graphics.Oedel ((===), (|||))
-import qualified Graphics.Oedel as Oedel
+import Graphics.Oedel.Layout ((===), (|||))
+import qualified Graphics.Oedel.Layout as Layout
 import Graphics.Oedel.Html.Base
 import Data.Text.Lazy.Builder
 import Data.Monoid
@@ -58,7 +58,7 @@ renderDiv style' inner position = res where
             ("bottom", varLengthToCss $ bottom abs)]
     res = "<div style=\"" <> cssStyle style <> "\">" <> inner <> "</div>"
 
-instance Oedel.Block Block where
+instance Layout.Block Block where
     (|||) l r =
         let tFreeWidth = freeWidth l + freeWidth r
             lF = fromRational (freeWidth l / tFreeWidth)
@@ -107,7 +107,7 @@ instance Oedel.Block Block where
     compact block = block {
         freeWidth = 0,
         freeHeight = 0 }
-instance Oedel.BlockSize Length Length Block where
+instance Layout.BlockSize Length Length Block where
     setWidth _ block | freeWidth block == 0 = block
     setWidth width block = block {
         minWidth = max (minWidth block) width,
@@ -116,14 +116,14 @@ instance Oedel.BlockSize Length Length Block where
     setHeight height block = block {
         minHeight = max (minHeight block) height,
         freeHeight = 0 }
-instance Oedel.BlockSolid Color Block where
+instance Layout.BlockSolid Color Block where
     solid color = Block {
         minWidth = 0,
         minHeight = 0,
         freeWidth = 1,
         freeHeight = 1,
         render = renderDiv [("background-color", colorToCss color)] "" }
-instance Oedel.BlockTrans Block where
+instance Layout.BlockTrans Block where
     clear = Block {
         minWidth = 0,
         minHeight = 0,

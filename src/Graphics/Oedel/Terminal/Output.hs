@@ -1,6 +1,6 @@
 module Graphics.Oedel.Terminal.Output where
 
-import qualified Graphics.Oedel as Oedel
+import qualified Graphics.Oedel.Layout as Layout
 import Graphics.Oedel.Terminal.Base
 import Graphics.Oedel.Terminal.Draw
 import Graphics.Oedel.Terminal.Paint
@@ -15,7 +15,7 @@ import Control.Applicative
 -- REPL output.
 printFlow :: Flow Identity -> IO ()
 printFlow flow = runDrawInline (\width ->
-    let alignment = Oedel.left
+    let alignment = Layout.left
         (Identity height, paint) = Flow.place flow alignment (pure width)
         context = pure (fst defaultAppearance, (0, 0))
     in (height, runIdentity $ fromPaint $ paint context))

@@ -8,6 +8,7 @@ import Graphics.Oedel.Terminal.Flow (Flow)
 import qualified Graphics.Oedel.Terminal.Flow as Flow
 import Graphics.Oedel.Terminal.Block (Block)
 import qualified Graphics.Oedel.Terminal.Block as Block
+import Graphics.Oedel.Terminal.Widget (Widget)
 import Control.Monad.Identity
 import Control.Applicative
 

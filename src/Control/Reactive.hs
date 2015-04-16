@@ -61,7 +61,7 @@ type MonadFix' m = (Applicative m, MonadFix m)
 -- | A reactive system where behaviors (@f@) can depend on events.
 -- This allows the system to hold time-varying state. The @m@ monad carries
 -- a time-dependent value.
-class (MonadFix' m, Reactive e f) => ReactiveState m e f | e -> m where
+class (MonadFix' m, Reactive e f) => ReactiveState m e f | e -> m f where
 
     -- | Constructs a behavior with the given initial value that changes in
     -- response to an event, starting at a particular moment.

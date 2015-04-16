@@ -1,11 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Graphics.Oedel.Html.Block where
 
 import Graphics.Oedel.Layout ((===), (|||))
 import qualified Graphics.Oedel.Layout as Layout
 import Graphics.Oedel.Html.Base
-import Data.Text.Lazy.Builder
+import Graphics.Oedel.Html.Flow (Flow)
+import qualified Graphics.Oedel.Html.Flow as Flow
 import Data.Monoid
 
 -- | Describes an absolute positioning of a block within a container.
@@ -26,7 +28,8 @@ data Absolute = Absolute {
 -- | Describes a possible positioning of a block within a container.+
 data Position = PAbsolute Absolute
 
--- | A constructor for an HTML element that occupies a rectangular region.
+-- | A constructor for a set of HTML elements that together occupy a
+-- rectangular region.
 data Block = Block {
 
     -- | The minimum width of the block.
@@ -43,20 +46,20 @@ data Block = Block {
     -- be allocated to this block.
     freeHeight :: Rational,
 
-    -- | Converts this block into an HTML tag representation.
-    render :: Position -> Builder }
+    -- | Converts this block into an HTML representation.
+    render :: Position -> Writer }
 
 -- | Renders a @div@ block with the given style and contents.
-renderDiv :: [(String, Builder)] -> Builder -> Position -> Builder
+renderDiv :: [(String, String)] -> Writer -> Position -> Writer
 renderDiv style' inner position = res where
     style = (<> style') $ case position of
         PAbsolute abs -> [
             ("position", "absolute"),
-            ("left", varLengthToCss $ left abs),
-            ("top", varLengthToCss $ top abs),
-            ("right", varLengthToCss $ right abs),
-            ("bottom", varLengthToCss $ bottom abs)]
-    res = "<div style=\"" <> cssStyle style <> "\">" <> inner <> "</div>"
+            ("left", toCss $ left abs),
+            ("top", toCss $ top abs),
+            ("right", toCss $ right abs),
+            ("bottom", toCss $ bottom abs)]
+    res = enclose "div" style [] inner
 
 instance Layout.Block Block where
     (|||) l r =
@@ -75,11 +78,10 @@ instance Layout.Block Block where
                         mW = minWidth
                         eB = (-lB) + (-rB) - mW l - mW r
                         eP = 1 - lP - rP
-                        innerP = 1 - lP - rP
                         lAbs = abs { right = VarLength
-                            (rB + mW r + (Points rF) * eB) (rP + rF * eP) }
+                            (rB + mW r + Points rF * eB) (rP + rF * eP) }
                         rAbs = abs { left = VarLength
-                            (lB + mW l + (Points lF) * eB) (lP + lF * eP) }
+                            (lB + mW l + Points lF * eB) (lP + lF * eP) }
                     in render l (PAbsolute lAbs) <>
                        render r (PAbsolute rAbs) }
     (===) t b =
@@ -99,9 +101,9 @@ instance Layout.Block Block where
                         eB = (-tB) + (-bB) - mH t - mH b
                         eP = 1 - tP - bP
                         tAbs = abs { bottom = VarLength
-                            (bB + mH b + (Points bF) * eB) (bP + bF * eP) }
+                            (bB + mH b + Points bF * eB) (bP + bF * eP) }
                         bAbs = abs { top = VarLength
-                            (tB + mH t + (Points tF) * eB) (tP + tF * eP) }
+                            (tB + mH t + Points tF * eB) (tP + tF * eP) }
                     in render t (PAbsolute tAbs) <>
                        render b (PAbsolute bAbs) }
     compact block = block {
@@ -122,7 +124,7 @@ instance Layout.BlockSolid Color Block where
         minHeight = 0,
         freeWidth = 1,
         freeHeight = 1,
-        render = renderDiv [("background-color", colorToCss color)] "" }
+        render = renderDiv [("background-color", toCss color)] "" }
 instance Layout.BlockTrans Block where
     clear = Block {
         minWidth = 0,
@@ -136,3 +138,10 @@ instance Layout.BlockTrans Block where
         freeWidth = min (freeWidth hi) (freeWidth lo),
         freeHeight = min (freeHeight hi) (freeHeight lo),
         render = \pos -> render lo pos <> render hi pos }
+instance Layout.FlowToBlock Flow.Alignment Flow Block where
+    block alignment flow = Block {
+        minWidth = 0,
+        minHeight = 0,
+        freeWidth = 1,
+        freeHeight = 1,
+        render = renderDiv [] $ Flow.render alignment flow }

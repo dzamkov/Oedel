@@ -21,9 +21,10 @@ class Monoid a => Flow a where
 class (Monoid w, Flow a) => FlowSpace w a | a -> w where
 
     -- | Constructs a weak space of the given width, so called because it
-    -- vanishes when it occurs adjacent to a break, regardless of how wide it
+    -- may vanish when it occurs adjacent to a break, regardless of how wide it
     -- is supposed to be.
     weakSpace :: w -> a
+    weakSpace = strongSpace
 
     -- | Constructs a strong space of the given width. Unlike a 'weakSpace', it
     -- will appear with its full width regardless of where it occurs.
@@ -36,25 +37,28 @@ space = weakSpace
 -- | @a@ is a flow-like figure with a means of displaying text. The text
 -- can be styled using a description of type @p@.
 class Flow a => FlowText p a | a -> p where
+    {-# MINIMAL (tightText, naturalSpace) | text #-}
 
     -- | Constructs a figure displaying the given text with no internal
     -- breakpoints.
     tightText :: (p -> p) -> String -> a
+    tightText style = tight . text style
 
     -- | A flow item corresponding to a space between words in text with
     -- the given styling description.
     naturalSpace :: (p -> p) -> a
+    naturalSpace style = text style " "
 
--- | Constructs a figure displaying the given text with natural breakpoints
--- between each word.
-text :: (FlowText p a) => (p -> p) -> String -> a
-text style = breakSpace where
-    breakWord a [] = tightText style (reverse a)
-    breakWord a (' ' : xs) = tightText style (reverse a) <> breakSpace xs
-    breakWord a (x : xs) = breakWord (x : a) xs
-    breakSpace [] = mempty
-    breakSpace (' ' : xs) = breakSpace xs
-    breakSpace (x : xs) = naturalSpace style <> breakWord [x] xs
+    -- | Constructs a figure displaying the given text with natural breakpoints
+    -- between each word.
+    text :: (p -> p) -> String -> a
+    text style = breakSpace where
+        breakWord a [] = tightText style (reverse a)
+        breakWord a (' ' : xs) = tightText style (reverse a) <> breakSpace xs
+        breakWord a (x : xs) = breakWord (x : a) xs
+        breakSpace [] = mempty
+        breakSpace (' ' : xs) = breakSpace xs
+        breakSpace (x : xs) = naturalSpace style <> breakWord [x] xs
 
 -- | @a@ is a block-like figure, appearing as a rectangle whose size may take a
 -- range of values.
@@ -147,4 +151,4 @@ class (Alignment l, Flow a, Block b)
 
         -- | Converts a flow into a translucent block using the given
         --alignment.
-        blockify :: l -> a -> b
+        block :: l -> a -> b

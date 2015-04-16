@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Graphics.Oedel.Html.Output where
 
+import Graphics.Oedel.Html.Base
 import Graphics.Oedel.Html.Block (Block)
 import qualified Graphics.Oedel.Html.Block as Block
 import System.Directory (getTemporaryDirectory)
@@ -20,10 +21,7 @@ blockToHtml block = res where
         Block.right = mempty,
         Block.bottom = mempty }
     position = Block.PAbsolute absolute
-    header = "<html><body>"
-    footer = "</body></html>"
-    content = header <> Block.render block position <> footer
-    res = toLazyText content
+    res = toLazyText (runWriterFull $ Block.render block position)
 
 -- | Opens a browser to display the given HTML block.
 displayHtmlBlock :: Block -> IO ()

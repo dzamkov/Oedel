@@ -162,7 +162,7 @@ instance (Applicative f) => Layout.BlockBorder BorderStyle (Block f) where
         in t === l ||| block ||| r === b
 instance (Applicative f) => Layout.FlowToBlock
     Flow.Alignment (Flow f) (Block f) where
-        blockify alignment flow = Block {
+        block alignment flow = Block {
             freeWidth = 1,
             freeHeight = 1,
             opacity = Dependent,

@@ -5,7 +5,7 @@ module Graphics.Oedel.Core (
     module Graphics.Oedel.Color,
     printFlow,
     printBlock,
-    displayHtmlBlock
+    displayHtmlStatic
 ) where
 
 import Graphics.Oedel

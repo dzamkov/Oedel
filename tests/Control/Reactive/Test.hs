@@ -4,8 +4,9 @@ import Test.Framework
 import Test.Framework.Providers.HUnit
 import Test.HUnit hiding (Test)
 import Control.Reactive
-import Control.Reactive.IO (newEvent, value)
+import Control.Reactive.IO (newEvent, await, value)
 import Control.Applicative
+import Control.Concurrent
 
 test :: Test
 test = testGroup "Reactive.IO" [
@@ -43,4 +44,14 @@ test = testGroup "Reactive.IO" [
         update (const 2)
         read ()
         cur <- value res
-        assertEqual "Final value" 3 cur]
+        assertEqual "Final value" 3 cur,
+
+    testCase "await" $ do
+        (takeE, take) <- newEvent
+        (giveE, give) <- newEvent
+        forkIO $ do
+            val <- await takeE
+            give (val * 2)
+        take 3
+        val <- await giveE
+        assertEqual "Final value" (6 :: Int) val]

@@ -65,7 +65,7 @@ displayHtmlStatic block = do
 -- | Opens a browser to display the given HTML widget and allow the user
 -- to interact with it. This returns when the user pressed "enter"
 -- in the terminal.
-displayHtmlWidget :: (Monoid a) => Widget Event Behavior Block a -> IO ()
+displayHtmlWidget :: (Monoid a) => Widget IO Event Behavior Block a -> IO ()
 displayHtmlWidget widget = do
     shutdown <- newEmptyMVar
     sock <- bindAny
@@ -73,9 +73,8 @@ displayHtmlWidget widget = do
     (post, makePost) <- newEvent
     app <- runWidget widget (\givePost -> do
         (mapping, setMapping) <- newBehavior (error "POST before GET")
-        let widgetPost = flip (,) <$> mapping <@> post
-            (_, fig) = givePost widgetPost
-            app req res = do
+        (_, fig) <- givePost $ flip (,) <$> mapping <@> post
+        let app req res = do
                 putMVar shutdown ()
                 case requestMethod req of
                     "GET" -> do

@@ -10,6 +10,7 @@ module Graphics.Oedel.Html.Base (
     defaultNames,
     Html,
     runHtmlFull,
+    newName,
     enclose,
     encloseFor
 ) where
@@ -93,6 +94,9 @@ data HtmlState = HtmlState {
     -- | An infinite list of unused names.
     names :: [Name],
 
+    -- | Indicates whether the produced HTML content contains "input" tags.
+    interactive :: Bool,
+
     -- | The inheritable style attributes that the 'Html' would like to
     -- have in its context.
     requestStyle :: Style }
@@ -124,12 +128,22 @@ runHtmlFull :: Html a -> (Builder, a)
 runHtmlFull (Html inner) =
     let initialState = HtmlState {
             names = defaultNames,
+            interactive = False,
             requestStyle = Map.empty }
         ((build, value), state) = runState inner initialState
         content = build $ requestStyle state
         body = buildElement "body" (Map.toList $ requestStyle state) content
         document = "<html>" <> body <> "</html>"
     in (document, value)
+
+-- | Gets a new unique name within the context of an 'Html'.
+newName :: Html Name
+newName = Html $ do
+    state <- get
+    let (name : rem) = names state
+        nState = state { names = rem }
+    put nState
+    return (const mempty, name)
 
 -- | Encloses the contents of an 'Html' with an element of the given tag
 -- and style.

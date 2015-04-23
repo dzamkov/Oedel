@@ -23,7 +23,12 @@ library
                        Graphics.Oedel.Attr
                        Graphics.Oedel.Layout
                        Graphics.Oedel.Widget
+                       Graphics.Oedel.Widget.DynamicEnv
                        Graphics.Oedel.Html.Base
+                       Graphics.Oedel.Html.Flow
+                       Graphics.Oedel.Html.Block
+                       Graphics.Oedel.Html.Output
+                       Graphics.Oedel.Html.Widget
   -- other-modules:       
   -- other-extensions:    
   build-depends:       base >=4.7 && <4.8,
@@ -50,4 +55,10 @@ test-suite tests
                        HUnit,
                        test-framework,
                        test-framework-hunit
+  default-language:    Haskell2010
+
+executable oedel-example-counter
+  main-is:             doc/examples/Counter.hs
+  build-depends:       base >=4.7 && <4.8,
+                       oedel
   default-language:    Haskell2010

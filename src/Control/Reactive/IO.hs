@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE AutoDeriveTypeable #-}
 module Control.Reactive.IO (
     Event (..),
     never,

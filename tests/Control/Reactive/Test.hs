@@ -7,6 +7,8 @@ import Control.Reactive
 import Control.Reactive.IO (newEvent, await, value)
 import Control.Applicative
 import Control.Concurrent
+import Control.Monad
+import Data.Monoid
 
 test :: Test
 test = testGroup "IO FRP" [
@@ -22,6 +24,40 @@ test = testGroup "IO FRP" [
         update (* 3)
         cur <- value behavior
         assertEqual "After multiplty" 6 cur,
+
+    testCase "up/down counter" $ do
+        (upE, up) <- newEvent
+        (downE, down) <- newEvent
+        let change = ((+ 1) <$ upE) <> ((\x -> x - 1) <$ downE)
+        behavior <- accumB (0 :: Int) change
+        up () >> up ()
+        cur <- value behavior
+        assertEqual "for part 1: " 2 cur
+        up () >> up ()
+        cur <- value behavior
+        assertEqual "for part 2: " 4 cur
+        down () >> up ()
+        cur <- value behavior
+        assertEqual "for part 3: " 4 cur
+        down () >> down () >> down ()
+        up () >> up () >> down ()
+        cur <- value behavior
+        assertEqual "for part 4: " 2 cur,
+
+    testCase "multi-threaded up counter" $ do
+        (upE, up) <- newEvent
+        behavior <- accumB (0 :: Int) ((+ 1) <$ upE)
+        let up100 = forM_ [(0 :: Int) .. 99] $ const $ threadDelay 1 >> up ()
+            forkUp100 = do
+                ref <- newEmptyMVar
+                forkIO $ do
+                    up100
+                    putMVar ref ()
+                return ref
+        refs <- forM [(0 :: Int) .. 99] $ const forkUp100
+        forM_ refs takeMVar
+        cur <- value behavior
+        assertEqual "Final count" 10000 cur,
 
     testCase "sharing" $ do
         (updateE, update) <- newEvent

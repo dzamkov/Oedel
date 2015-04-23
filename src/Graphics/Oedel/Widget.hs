@@ -34,6 +34,25 @@ instance Monoid a => Monoid (Output a b) where
     mempty = Output $ const mempty
     mappend (Output x) (Output y) = Output $ \v -> x v <> y v
 
+-- | Composes 'Input' with a behavior-like applicative. This is meant to
+-- be used with layout functions suffixed with "Dyn", allowing a layout
+-- to vary based on a behavior embedded within an environment.
+data InputDyn f a b = InputDyn (Input a (f b))
+instance Functor f => Functor (InputDyn f a) where
+    fmap f (InputDyn x) = InputDyn $ (f <$>) <$> x
+instance Applicative f => Applicative (InputDyn f a) where
+    pure x = InputDyn $ pure $ pure x
+    (<*>) (InputDyn f) (InputDyn x) = InputDyn $ (<*>) <$> f <*> x
+
+-- | Converts an 'Input' for a behavior into a 'InputDyn', for use in
+-- layout functions suffixed with "Dyn".
+dyn :: Input a (f b) -> InputDyn f a b
+dyn = InputDyn
+
+-- | Inverse of 'dyn'.
+undyn :: InputDyn f a b -> Input a (f b)
+undyn (InputDyn inp) = inp
+
 -- | @w a@ is a description of an interactive figure within an environment of
 -- type @a@. Widgets can read from and write to their environment, and widgets
 -- with the same environment type can be composed as figures.

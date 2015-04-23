@@ -2,7 +2,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE RankNTypes #-}
 module Graphics.Oedel.Html.Widget where
 
@@ -14,15 +13,16 @@ import Graphics.Oedel.Html.Flow (Flow (..), TextStyle)
 import qualified Graphics.Oedel.Html.Flow as Flow
 import Graphics.Oedel.Html.Block (Block)
 import Data.String
+import Data.ByteString (ByteString)
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, fromMaybe)
 import Data.Monoid
 import Control.Reactive
 import Control.Applicative
 
 -- | Describes the data in a post request.
-type Post = Map String String
+type Post = Map ByteString ByteString
 
 -- | Augments an HTML figure of type @q@ with the ability to interact with
 -- the user and access an environment of type @a@. Widgets live in a
@@ -33,9 +33,11 @@ data Widget m e f q a = forall b. (Monoid b)
 -- | Runs a widget.
 runWidget :: (ReactiveState m e f, Monoid a) => Widget m e f q a
     -> (forall b. (e (Post, b) -> m (a, f (q b))) -> r) -> r
-runWidget (Widget f) inner = inner (\post -> mdo
-    (fig, update) <- f env
+runWidget (Widget f) inner = inner (\post -> do
+    (_, update') <- f mempty
+    (_, update) <- f (update' post)
     let env = update post
+    (fig, _) <- f env
     return (env, fig))
 
 -- | Converts a static figure into a widget.
@@ -78,6 +80,13 @@ instance (ReactiveState m e f, Monoid a)
     => Layout.FlowText TextStyle (Widget m e f Flow a) where
         text style = augment . Layout.text style
 instance (ReactiveState m e f, Monoid a)
+    => Layout.FlowTextDyn (Oedel.InputDyn f a)
+    TextStyle (Widget m e f Flow a) where
+        tightTextDyn style inp = Widget $ \env ->
+            return ((Layout.tightText style :: String -> Flow ()) <$>
+                fromMaybe (pure "") (Oedel.readEnv (Oedel.undyn inp) env),
+                const mempty)
+instance (ReactiveState m e f, Monoid a)
     => Layout.FlowSpace Length (Widget m e f Flow a) where
         strongSpace = augment . Layout.strongSpace
 instance (ReactiveState m e f, Monoid a)
@@ -103,23 +112,26 @@ instance (ReactiveState m e f, Monoid a)
 
 instance (ReactiveState m e f)
     => Oedel.Widget m e f (Widget m e f q) where
-        declare input output (Widget f) = Widget $ \env ->
-            case Oedel.readEnv input env of
-                Nothing -> f env
+        declare input output (Widget f) = Widget $ \env -> do
+            (fig, update) <- f env
+            nUpdate <- case Oedel.readEnv input env of
+                Nothing -> return update
                 Just cons -> do
                     value <- cons
-                    (fig, update) <- f env
-                    return (fig, (<> Oedel.putEnv output value) . update)
+                    return ((<> Oedel.putEnv output value) . update)
+            return (fig, nUpdate)
 instance (ReactiveState m e f)
-    => Oedel.WidgetButton () m e f (Widget m e f Flow) where
-        button _ output = res where
+    => Oedel.WidgetButton String m e f (Widget m e f Flow) where
+        button style output = res where
             fig = Flow {
                 Flow.hasSpace = False,
                 Flow.renderInner = do
+                    makeInteractive
                     name <- newName
-                    "<input type=\"submit\" name=\"submit\" value=\"" <>
-                        fromString name <> ("\">" :: Html ())
-                    return (Just name) }
+                    "<button type=\"submit\" name=\"submit\" value=\"" <>
+                        fromString name <> ("\">" :: Html ()) <>
+                        fromString (style "") <> "</button>"
+                    return (Just $ fromString name) }
             update post = Oedel.putEnv output $ filterJust $
                 (\(post, mapping) ->
                     case (Map.lookup "submit" post, mapping) of

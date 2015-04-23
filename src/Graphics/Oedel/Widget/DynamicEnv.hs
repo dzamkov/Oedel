@@ -5,23 +5,24 @@ module Graphics.Oedel.Widget.DynamicEnv (
 
 import Graphics.Oedel.Widget
 import Data.Dynamic
-import Data.Map
-import qualified Data.Map as Map
 import Data.Monoid
+import Control.Monad
 
 -- | An environment that dynamically stores a number of values, indexed
 -- by an orderable key type.
-newtype DynamicEnv a = DynamicEnv (Map a Dynamic)
+newtype DynamicEnv a = DynamicEnv [(a, Dynamic)]
 instance Ord a => Monoid (DynamicEnv a) where
-    mempty = DynamicEnv Map.empty
-    mappend (DynamicEnv x) (DynamicEnv y) = DynamicEnv $ Map.union y x
+    mempty = DynamicEnv []
+    mappend (DynamicEnv x) (DynamicEnv y) = DynamicEnv $ x <> y
 
 -- | Constructs a keyed input for a dynamic environment.
 inp :: (Ord a, Typeable b) => a -> Input (DynamicEnv a) b
-inp key = Input $ \(DynamicEnv env) -> case Map.lookup key env of
-    Just dyn -> fromDynamic dyn
-    Nothing -> Nothing
+inp key = Input $ \(DynamicEnv env) ->
+    let find ((k, v) : rem) | k == key = mplus (fromDynamic v) (find rem)
+        find (_ : rem) = find rem
+        find [] = Nothing
+    in find env
 
 -- | Constructs a keyed output for a dynamic environment.
 out :: (Ord a, Typeable b) => a -> Output (DynamicEnv a) b
-out key = Output $ \value -> DynamicEnv $ Map.singleton key (toDyn value)
+out key = Output $ \value -> DynamicEnv [(key, toDyn value)]

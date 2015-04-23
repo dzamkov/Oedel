@@ -3,6 +3,7 @@ module Graphics.Oedel.Layout where
 
 import Graphics.Oedel.Color (Color)
 import Data.Monoid
+import Control.Applicative
 
 -- | @a@ is a flow-like figure, a linear arrangment of items interspersed with
 -- potential breakpoints. When applied to an area, the flow can be broken into
@@ -59,6 +60,14 @@ class Flow a => FlowText p a | a -> p where
         breakSpace [] = mempty
         breakSpace (' ' : xs) = breakSpace xs
         breakSpace (x : xs) = naturalSpace style <> breakWord [x] xs
+
+-- | @a@ is a flow-like figure with a means of displaying text that varies
+-- dynamically in a context of type @f@.
+class (Applicative f, FlowText p a) => FlowTextDyn f p a | a -> f where
+
+    -- | Constructs a figure displaying the given dynamic text with no internal
+    -- breakpoints.
+    tightTextDyn :: (p -> p) -> f String -> a
 
 -- | @a@ is a block-like figure, appearing as a rectangle whose size may take a
 -- range of values.

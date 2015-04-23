@@ -10,6 +10,7 @@ module Graphics.Oedel.Html.Base (
     defaultNames,
     Html,
     runHtmlFull,
+    makeInteractive,
     newName,
     enclose,
     encloseFor
@@ -81,12 +82,14 @@ buildElement tag props inner = res where
 -- | A unique identifier for a script, style or HTML component.
 type Name = String
 
--- | An infinite list of non-empty alphanumeric 'Name's.
+-- | An infinite list of non-empty alphanumeric (with underscores) 'Name's.
 defaultNames :: [Name]
-defaultNames = do
-    tail <- "" : defaultNames
-    ch <- ['a' .. 'z'] ++ ['A' .. 'Z'] ++ ['0' .. '9']
-    return $ ch : tail
+defaultNames =
+    let suffixes = do
+            tail <- "" : suffixes
+            ch <- ['a' .. 'z'] ++ ['A' .. 'Z'] ++ ['0' .. '9']
+            return $ ch : tail
+    in ("_" ++) <$> suffixes
 
 -- | The state information kept by 'Html'.
 data HtmlState = HtmlState {
@@ -131,10 +134,19 @@ runHtmlFull (Html inner) =
             interactive = False,
             requestStyle = Map.empty }
         ((build, value), state) = runState inner initialState
-        content = build $ requestStyle state
+        content' = build $ requestStyle state
+        content = if interactive state
+            then "<form method=\"POST\">" <> content' <> "</form>"
+            else content'
         body = buildElement "body" (Map.toList $ requestStyle state) content
         document = "<html>" <> body <> "</html>"
     in (document, value)
+
+-- | An 'Html' procedure that makes the HTML context interactive.
+makeInteractive :: Html ()
+makeInteractive = Html $ do
+    modify (\state -> state { interactive = True })
+    return (const mempty, ())
 
 -- | Gets a new unique name within the context of an 'Html'.
 newName :: Html Name

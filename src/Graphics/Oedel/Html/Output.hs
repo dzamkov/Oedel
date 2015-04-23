@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecursiveDo #-}
 module Graphics.Oedel.Html.Output where
 
 import Graphics.Oedel.Html.Base
@@ -15,6 +14,9 @@ import Control.Concurrent
 import Data.Text.Lazy (Text)
 import Data.Text.Lazy.Builder (toLazyText)
 import Data.Text.Lazy.Encoding
+import Data.ByteString (ByteString)
+import qualified Data.ByteString.Char8 as ByteString
+import qualified Data.Map as Map
 import Data.Monoid
 import Control.Reactive ((<@>))
 import Control.Reactive.IO
@@ -62,33 +64,44 @@ displayHtmlStatic block = do
     threadDelay (2 * 1000 * 1000) -- Finish pending requests
     -- TODO: Cleanup?
 
+-- | Parses a post request.
+parsePost :: ByteString -> Post
+parsePost = Map.fromList .
+    map (\field ->
+        let [name, value] = ByteString.split '=' field
+        in (name, value)) .
+    ByteString.split '&'
+
 -- | Opens a browser to display the given HTML widget and allow the user
 -- to interact with it. This returns when the user pressed "enter"
 -- in the terminal.
 displayHtmlWidget :: (Monoid a) => Widget IO Event Behavior Block a -> IO ()
 displayHtmlWidget widget = do
-    shutdown <- newEmptyMVar
     sock <- bindAny
     port <- socketPort sock
     (post, makePost) <- newEvent
     app <- runWidget widget (\givePost -> do
         (mapping, setMapping) <- newBehavior (error "POST before GET")
         (_, fig) <- givePost $ flip (,) <$> mapping <@> post
-        let app req res = do
-                putMVar shutdown ()
-                case requestMethod req of
-                    "GET" -> do
-                        block <- value fig
-                        let (html, nMapping) = blockToHtml block
-                        setMapping $ const nMapping
-                        res $ responseLBS status200
-                            [("Content-Type", "text/html")]
-                            (encodeUtf8 html)
-                    "POST" -> error "not implemented"
-                    _ -> error "unknown method"
+        let app req res = case requestMethod req of
+                "GET" -> do
+                    block <- value fig
+                    putStrLn "get"
+                    let (html, nMapping) = blockToHtml block
+                    setMapping $ const nMapping
+                    res $ responseLBS status200
+                        [("Content-Type", "text/html")]
+                        (encodeUtf8 html)
+                "POST" -> do
+                    body <- requestBody req
+                    makePost $ parsePost body
+                    putStrLn $ "post " ++ show (parsePost body)
+                    res $ responseLBS status302
+                        [("Location", "/")]
+                        ""
+                _ -> error "unknown method"
         return app)
     listen sock 1
     forkIO $ runSettingsSocket defaultSettings sock app
     forkIO $ void $ system $ "start http://127.0.0.1:" ++ show port ++ "/"
     void getLine
-    takeMVar shutdown

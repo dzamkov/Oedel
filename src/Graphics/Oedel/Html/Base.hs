@@ -5,6 +5,10 @@ module Graphics.Oedel.Html.Base (
     Length (..),
     VarLength (..),
     Color (..),
+    Name,
+    NameGen,
+    runNameGen,
+    newName,
     Writer (..),
     runWriterFull,
     enclose,
@@ -18,6 +22,8 @@ import Data.Text.Lazy.Builder (Builder)
 import Data.Char (intToDigit)
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Control.Monad.State
+import Control.Applicative
 
 -- | @a@ is a type that can be converted to a CSS value.
 class ToCss a where
@@ -72,6 +78,29 @@ buildElement tag props inner = res where
         foldr ((<>) . f) "" props <> "\">" <> inner <>
         "</" <> fromString tag <> ">"
 
+-- | A unique identifier for a script, style or HTML component.
+type Name = String
+
+-- | Provides a context in which unique names can be constructed.
+type NameGen = State [Name]
+
+-- | Runs a 'NameGen' monad, using the given name as a prefix for all generated
+-- names. Suffixes for generated names will be non-empty alphanumeric strings.
+runNameGen :: NameGen a -> Name -> a
+runNameGen nameGen pre = res where
+    suffixes = do
+        tail <- "" : suffixes
+        ch <- ['a' .. 'z'] ++ ['A' .. 'Z'] ++ ['0' .. '9']
+        return $ ch : tail
+    names = (pre ++) <$> suffixes
+    res = evalState nameGen names
+
+-- | Constructs a new unique name.
+newName :: NameGen Name
+newName = do
+    name : rem <- get
+    put rem
+    return name
 
 -- | Produces an HTML string in an environment of styles and scripts.
 data Writer = Writer {

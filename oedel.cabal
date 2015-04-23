@@ -23,6 +23,7 @@ library
                        Graphics.Oedel.Attr
                        Graphics.Oedel.Layout
                        Graphics.Oedel.Widget
+                       Graphics.Oedel.Html.Base
   -- other-modules:       
   -- other-extensions:    
   build-depends:       base >=4.7 && <4.8,

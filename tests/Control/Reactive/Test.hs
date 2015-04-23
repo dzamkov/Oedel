@@ -9,7 +9,7 @@ import Control.Applicative
 import Control.Concurrent
 
 test :: Test
-test = testGroup "Reactive.IO" [
+test = testGroup "IO FRP" [
 
     testCase "simple accum" $ do
         (updateE, update) <- newEvent

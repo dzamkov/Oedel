@@ -10,40 +10,43 @@ import Data.Monoid
 import Data.Maybe (catMaybes)
 import Control.Applicative
 
--- | A constructor for a group of HTML elements that occur inline.
-data Flow = Flow {
+-- | A constructor for a group of HTML elements that occur inline; produces
+-- a value of type @a@ when rendered.
+data Flow a = Flow {
 
     -- | Indicates whether this flow has any natural spaces in it.
     hasSpace :: Bool,
 
     -- | Converts a flow into its HTML representation, excluding the enclosing
     -- style.
-    renderInner :: Writer }
+    renderInner :: Html a }
 
 -- | Converts a flow into its HTML representation.
-render :: Alignment -> Flow -> Writer
+render :: Alignment -> Flow a -> Html a
 render alignment flow = encloseFor "span" (catMaybes [
     Just ("text-align", toCss alignment),
     if hasSpace flow then Just ("white-space", "pre-wrap") else Nothing]) $
     renderInner flow
 
-instance Monoid Flow where
+instance Functor Flow where
+    fmap f flow = flow { renderInner = f <$> renderInner flow }
+instance Monoid a => Monoid (Flow a) where
     mempty = Flow {
         hasSpace = False,
         renderInner = mempty }
     mappend x y = Flow {
         hasSpace = hasSpace x || hasSpace y,
         renderInner = renderInner x <> "&#8203;" <> renderInner y }
-instance Layout.Flow Flow where
+instance Monoid a => Layout.Flow (Flow a) where
     tight source = source {
         renderInner = encloseFor "span" [("white-space", "pre")] $
             renderInner source }
-instance Layout.FlowText TextStyle Flow where
+instance Monoid a => Layout.FlowText TextStyle (Flow a) where
     text style str = Flow {
         hasSpace = True,
         renderInner = encloseFor "span"
             (textStyleToCss $ style defaultStyle) $ fromString str }
-instance Layout.FlowSpace Length Flow where
+instance Monoid a => Layout.FlowSpace Length (Flow a) where
     strongSpace len = Flow {
         hasSpace = False,
         renderInner = enclose "span" [("width", toCss len)] [] "" }

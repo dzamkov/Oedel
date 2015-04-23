@@ -1,16 +1,15 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Graphics.Oedel.Html.Base (
     ToCss (..),
     Length (..),
     VarLength (..),
     Color (..),
     Name,
-    NameGen,
-    runNameGen,
-    newName,
-    Writer (..),
-    runWriterFull,
+    defaultNames,
+    Html,
+    runHtmlFull,
     enclose,
     encloseFor
 ) where
@@ -81,87 +80,93 @@ buildElement tag props inner = res where
 -- | A unique identifier for a script, style or HTML component.
 type Name = String
 
--- | Provides a context in which unique names can be constructed.
-type NameGen = State [Name]
+-- | An infinite list of non-empty alphanumeric 'Name's.
+defaultNames :: [Name]
+defaultNames = do
+    tail <- "" : defaultNames
+    ch <- ['a' .. 'z'] ++ ['A' .. 'Z'] ++ ['0' .. '9']
+    return $ ch : tail
 
--- | Runs a 'NameGen' monad, using the given name as a prefix for all generated
--- names. Suffixes for generated names will be non-empty alphanumeric strings.
-runNameGen :: NameGen a -> Name -> a
-runNameGen nameGen pre = res where
-    suffixes = do
-        tail <- "" : suffixes
-        ch <- ['a' .. 'z'] ++ ['A' .. 'Z'] ++ ['0' .. '9']
-        return $ ch : tail
-    names = (pre ++) <$> suffixes
-    res = evalState nameGen names
+-- | The state information kept by 'Html'.
+data HtmlState = HtmlState {
 
--- | Constructs a new unique name.
-newName :: NameGen Name
-newName = do
-    name : rem <- get
-    put rem
-    return name
+    -- | An infinite list of unused names.
+    names :: [Name],
 
--- | Produces an HTML string in an environment of styles and scripts.
-data Writer = Writer {
+    -- | The inheritable style attributes that the 'Html' would like to
+    -- have in its context.
+    requestStyle :: Style }
 
-    -- | The inheritable style attributes this writer would like to have in
-    -- its context.
-    requestStyle :: Style,
+-- | A procedure that runs in an environment of HTML styles, scripts and
+-- components and produces HTML content.
+newtype Html a = Html (State HtmlState (Style -> Builder, a))
+instance Functor Html where
+    fmap f (Html x) = Html $ (f <$>) <$> x
+instance Applicative Html where
+    pure x = Html $ pure (const mempty, x)
+    (<*>) (Html f) (Html g) = Html $ (\(fc, fv) (gc, gv) ->
+        (fc <> gc, fv gv)) <$> f <*> g
+instance Monad Html where
+    return = pure
+    (>>=) (Html x) f = Html $ do
+        (xc, xv) <- x
+        let Html y = f xv
+        (yc, yv) <- y
+        return (xc <> yc, yv)
+instance Monoid a => IsString (Html a) where
+    fromString str = Html $ return (const $ fromString str, mempty)
+instance Monoid a => Monoid (Html a) where
+    mempty = pure mempty
+    mappend x y = (<>) <$> x <*> y
 
-    -- | Produces output for this writer given the set of inheritable style
-    -- attributes that are active in its context.
-    runWriter :: Style -> Builder }
+-- | Runs an 'Html' to produce a full HTML document.
+runHtmlFull :: Html a -> (Builder, a)
+runHtmlFull (Html inner) =
+    let initialState = HtmlState {
+            names = defaultNames,
+            requestStyle = Map.empty }
+        ((build, value), state) = runState inner initialState
+        content = build $ requestStyle state
+        body = buildElement "body" (Map.toList $ requestStyle state) content
+        document = "<html>" <> body <> "</html>"
+    in (document, value)
 
--- | Runs a writer to produce a full HTML document.
-runWriterFull :: Writer -> Builder
-runWriterFull inner =
-    let style = requestStyle inner
-        body = buildElement "body" (Map.toList style) $ runWriter inner style
-    in "<html>" <> body <> "</html>"
-
-instance IsString Writer where
-    fromString str = Writer {
-        requestStyle = Map.empty,
-        runWriter = const $ fromString str }
-instance Monoid Writer where
-    mempty = Writer {
-        requestStyle = Map.empty,
-        runWriter = const mempty }
-    mappend x y = Writer {
-        requestStyle = Map.union (requestStyle x) (requestStyle y),
-        runWriter = \style -> runWriter x style <> runWriter y style }
-
--- | Encloses the contents of a 'Writer' with an element of the given tag
+-- | Encloses the contents of an 'Html' with an element of the given tag
 -- and style.
 enclose' :: String
     -> Maybe [(String, String)]   -- ^ immediate (non-inheritable) style
     -> [(String, String)]         -- ^ requested (inheritable) style
-    -> Writer -> Writer
-enclose' tag imm req' source =
+    -> Html a -> Html a
+enclose' tag imm req' (Html inner) =
     let req = Map.fromList req'
-    in Writer {
-        requestStyle = Map.union req (requestStyle source),
-        runWriter = \style ->
-            let missing = Map.differenceWith
-                    (\req has -> if req == has then Nothing else Just req)
-                    req style
-            in case imm of
-                Nothing -> if Map.null missing then runWriter source style
-                    else buildElement tag (Map.toList req) $
-                        runWriter source (Map.union missing style)
-                Just imm -> buildElement tag (imm ++ Map.toList req) $
-                    runWriter source (Map.union missing style) }
+    in Html $ do
+        state <- get
+        let innerState = state { requestStyle = Map.empty }
+            ((buildInner, value), final) = runState inner innerState
+            innerReq = requestStyle final
+            totalReq = Map.union req innerReq
+        put final { requestStyle = Map.union (requestStyle state) totalReq }
+        let build style =
+                let missing = Map.differenceWith
+                        (\req has -> if req == has then Nothing else Just req)
+                        totalReq style
+                in case imm of
+                    Nothing -> if Map.null missing then buildInner style
+                        else buildElement tag (Map.toList totalReq) $
+                            buildInner (Map.union missing style)
+                    Just imm -> buildElement tag (imm ++ Map.toList totalReq) $
+                        buildInner (Map.union missing style)
+        return (build, value)
 
--- | Encloses the contents of a 'Writer' with an element of the given tag
+-- | Encloses the contents of a 'Html' with an element of the given tag
 -- and style.
 enclose :: String
     -> [(String, String)]   -- ^ immediate (non-inheritable) style
     -> [(String, String)]   -- ^ requested (inheritable) style
-    -> Writer -> Writer
+    -> Html a -> Html a
 enclose tag imm = enclose' tag (Just imm)
 
 -- | Encloses the contents of a 'Writer' with an element of the given tag
 -- and style, but only if needed to fufill the requested style.
-encloseFor :: String -> [(String, String)] -> Writer -> Writer
+encloseFor :: String -> [(String, String)] -> Html a -> Html a
 encloseFor tag = enclose' tag Nothing

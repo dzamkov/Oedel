@@ -5,7 +5,8 @@ module Graphics.Oedel (
     module Graphics.Oedel.Widget,
     printFlow,
     printBlock,
-    displayHtmlStatic
+    displayHtmlStatic,
+    displayHtmlWidget
 ) where
 
 import Graphics.Oedel.Layout

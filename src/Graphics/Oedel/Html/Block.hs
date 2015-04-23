@@ -9,6 +9,7 @@ import Graphics.Oedel.Html.Base
 import Graphics.Oedel.Html.Flow (Flow)
 import qualified Graphics.Oedel.Html.Flow as Flow
 import Data.Monoid
+import Control.Applicative
 
 -- | Describes an absolute positioning of a block within a container.
 data Absolute = Absolute {
@@ -29,8 +30,8 @@ data Absolute = Absolute {
 data Position = PAbsolute Absolute
 
 -- | A constructor for a set of HTML elements that together occupy a
--- rectangular region.
-data Block = Block {
+-- rectangular region; produces a value of type @a@ when rendered.
+data Block a = Block {
 
     -- | The minimum width of the block.
     minWidth :: Length,
@@ -47,10 +48,10 @@ data Block = Block {
     freeHeight :: Rational,
 
     -- | Converts this block into an HTML representation.
-    render :: Position -> Writer }
+    render :: Position -> Html a }
 
 -- | Renders a @div@ block with the given style and contents.
-renderDiv :: [(String, String)] -> Writer -> Position -> Writer
+renderDiv :: [(String, String)] -> Html a -> Position -> Html a
 renderDiv style' inner position = res where
     style = (<> style') $ case position of
         PAbsolute abs -> [
@@ -61,7 +62,9 @@ renderDiv style' inner position = res where
             ("bottom", toCss $ bottom abs)]
     res = enclose "div" style [] inner
 
-instance Layout.Block Block where
+instance Functor Block where
+    fmap f block = block { render = (f <$>) . render block }
+instance Monoid a => Layout.Block (Block a) where
     (|||) l r =
         let tFreeWidth = freeWidth l + freeWidth r
             lF = fromRational (freeWidth l / tFreeWidth)
@@ -109,7 +112,7 @@ instance Layout.Block Block where
     compact block = block {
         freeWidth = 0,
         freeHeight = 0 }
-instance Layout.BlockSize Length Length Block where
+instance Monoid a => Layout.BlockSize Length Length (Block a) where
     setWidth _ block | freeWidth block == 0 = block
     setWidth width block = block {
         minWidth = max (minWidth block) width,
@@ -118,14 +121,14 @@ instance Layout.BlockSize Length Length Block where
     setHeight height block = block {
         minHeight = max (minHeight block) height,
         freeHeight = 0 }
-instance Layout.BlockSolid Color Block where
+instance Monoid a => Layout.BlockSolid Color (Block a) where
     solid color = Block {
         minWidth = 0,
         minHeight = 0,
         freeWidth = 1,
         freeHeight = 1,
         render = renderDiv [("background-color", toCss color)] "" }
-instance Layout.BlockTrans Block where
+instance Monoid a => Layout.BlockTrans (Block a) where
     clear = Block {
         minWidth = 0,
         minHeight = 0,
@@ -138,7 +141,7 @@ instance Layout.BlockTrans Block where
         freeWidth = min (freeWidth hi) (freeWidth lo),
         freeHeight = min (freeHeight hi) (freeHeight lo),
         render = \pos -> render lo pos <> render hi pos }
-instance Layout.FlowToBlock Flow.Alignment Flow Block where
+instance Monoid a => Layout.FlowToBlock Flow.Alignment (Flow a) (Block a) where
     block alignment flow = Block {
         minWidth = 0,
         minHeight = 0,

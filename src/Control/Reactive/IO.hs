@@ -60,7 +60,12 @@ never = Event $ const $ return ()
 
 -- | Combines events without memoization.
 union :: Event a -> Event a -> Event a
-union x y = Event $ \h -> register x h >> register y h
+union x y = Event $ \h -> do
+    lock <- newEmptyMVar
+    let handle value = do
+            res <- tryPutMVar lock ()
+            when res $ h value
+    register x handle >> register y handle
 
 -- | Maps an event without memoization.
 mapE :: (a -> b) -> Event a -> Event b

@@ -220,7 +220,7 @@ newHandlersList = do
 accumB :: forall a. a -> Event (a -> a) -> IO (Behavior a)
 accumB value event = do
     ref <- newIORef value
-    weakRef <- mkWeakPtr ref Nothing
+    weakRef <- mkWeakIORef ref (return ())
     (registerInvalidate', invalidate) <- newHandlersList
     let handler :: (a -> a) -> IO ()
         handler f = do
@@ -254,7 +254,7 @@ changes source = Event $ \handler ->
 memoB :: Behavior a -> Behavior a
 memoB source = unsafePerformIO $ do
     ref <- newIORef Nothing
-    weakRef <- mkWeakPtr ref Nothing
+    weakRef <- mkWeakIORef ref (return ())
     (registerInvalidate', invalidate) <- newHandlersList
     let sourceInvalidate :: IO (IO ())
         sourceInvalidate = do

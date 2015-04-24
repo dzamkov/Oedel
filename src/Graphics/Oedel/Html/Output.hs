@@ -86,7 +86,6 @@ displayHtmlWidget widget = do
         let app req res = case requestMethod req of
                 "GET" -> do
                     block <- value fig
-                    putStrLn "get"
                     let (html, nMapping) = blockToHtml block
                     setMapping $ const nMapping
                     res $ responseLBS status200
@@ -95,7 +94,6 @@ displayHtmlWidget widget = do
                 "POST" -> do
                     body <- requestBody req
                     makePost $ parsePost body
-                    putStrLn $ "post " ++ show (parsePost body)
                     res $ responseLBS status302
                         [("Location", "/")]
                         ""

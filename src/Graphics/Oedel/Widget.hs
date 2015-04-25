@@ -76,4 +76,4 @@ class Widget m e f w => WidgetButton p m e f w | w -> p where
 
     -- | Constructs a button widget with the given style. The given output
     -- event will occur when the button is pressed.
-    button :: (p -> p) -> Output a (e ()) -> w a
+    button :: p -> Output a (e ()) -> w a

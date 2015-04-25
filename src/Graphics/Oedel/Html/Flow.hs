@@ -61,6 +61,8 @@ data TextStyle = TextStyle {
     textFontSize :: Maybe Length }
 instance AttrColor Color TextStyle where
     color c style = style { textColor = Just c }
+instance AttrFontSize Length TextStyle where
+    fontSize h style = style { textFontSize = Just h }
 instance HasDefault TextStyle where
     deft = TextStyle {
         textColor = Nothing,

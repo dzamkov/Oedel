@@ -8,6 +8,7 @@ module Graphics.Oedel.Html.Widget where
 import Graphics.Oedel.Layout ((|||), (===))
 import qualified Graphics.Oedel.Layout as Layout
 import qualified Graphics.Oedel.Widget as Oedel
+import Graphics.Oedel.Attr
 import Graphics.Oedel.Html.Base
 import Graphics.Oedel.Html.Flow (Flow (..), TextStyle)
 import qualified Graphics.Oedel.Html.Flow as Flow
@@ -121,16 +122,17 @@ instance (ReactiveState m e f)
                     return ((<> Oedel.putEnv output value) . update)
             return (fig, nUpdate)
 instance (ReactiveState m e f)
-    => Oedel.WidgetButton String m e f (Widget m e f Flow) where
+    => Oedel.WidgetButton ButtonStyle m e f (Widget m e f Flow) where
         button style output = res where
             fig = Flow {
                 Flow.hasSpace = False,
                 Flow.renderInner = do
                     makeInteractive
                     name <- newName
+                    let inner = Flow.renderInner $ buttonContent style
                     "<button type=\"submit\" name=\"submit\" value=\"" <>
                         fromString name <> ("\">" :: Html ()) <>
-                        fromString (style "") <> "</button>"
+                        noInherit inner <> "</button>"
                     return (Just $ fromString name) }
             update post = Oedel.putEnv output $ filterJust $
                 (\(post, mapping) ->
@@ -138,3 +140,14 @@ instance (ReactiveState m e f)
                         (Just val, Just name) | val == name -> Just ()
                         _ -> Nothing) <$> post
             res = Widget $ const $ return (pure fig, update)
+
+-- | Gives styling information for a button.
+data ButtonStyle = ButtonStyle {
+    buttonContent :: Flow () }
+instance AttrContent (Flow ()) ButtonStyle where
+    content flow style = style { buttonContent = flow }
+instance AttrTitle ButtonStyle where
+    title str style = Layout.withDefaultTextStyle $
+        style { buttonContent = Layout.text str }
+instance HasDefault ButtonStyle where
+    deft = ButtonStyle { buttonContent = mempty }

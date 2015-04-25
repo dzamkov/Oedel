@@ -12,6 +12,7 @@ module Graphics.Oedel.Html.Base (
     runHtmlFull,
     makeInteractive,
     newName,
+    noInherit,
     enclose,
     encloseFor
 ) where
@@ -156,6 +157,14 @@ newName = Html $ do
         nState = state { names = rem }
     put nState
     return (const mempty, name)
+
+-- | Disallows an 'Html' from inheriting styles from its containing context.
+noInherit :: Html a -> Html a
+noInherit (Html inner) = Html $ do
+    state <- get
+    let ((buildInner, value), final) = runState inner state
+    put $ final { requestStyle = Map.empty }
+    return (const $ buildInner Map.empty, value)
 
 -- | Encloses the contents of an 'Html' with an element of the given tag
 -- and style.

@@ -78,12 +78,12 @@ instance (ReactiveState m e f, Monoid a)
         tight = decorate Layout.tight
 instance (ReactiveState m e f, Monoid a)
     => Layout.FlowText TextStyle (Widget m e f Flow a) where
-        text style = augment . Layout.text style
+        text = augment . Layout.text
 instance (ReactiveState m e f, Monoid a)
     => Layout.FlowTextDyn (Oedel.InputDyn f a)
     TextStyle (Widget m e f Flow a) where
-        tightTextDyn style inp = Widget $ \env ->
-            return ((Layout.tightText style :: String -> Flow ()) <$>
+        tightTextDyn inp = Widget $ \env ->
+            return ((Layout.tightText :: String -> Flow ()) <$>
                 fromMaybe (pure "") (Oedel.readEnv (Oedel.undyn inp) env),
                 const mempty)
 instance (ReactiveState m e f, Monoid a)

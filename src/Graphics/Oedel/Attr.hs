@@ -13,12 +13,19 @@ class Color c => AttrColor c p | p -> c where
     -- | Applies the given color to a styling description.
     color :: c -> p -> p
 
--- | @p@ is a styling description for text that allows a font of type @f@
--- to be specified.
+-- | @p@ is a styling description for text that allows a font family of type
+-- @f@ to be specified.
 class AttrFont f p | p -> f where
 
     -- | Applies the given font to a styling description.
     font :: f -> p -> p
+
+-- | @p@ is a styling description for text that allows a font size
+-- to be specified.
+class AttrFontSize h p | p -> h where
+
+    -- | Applies the given font size to a styling description.
+    fontSize :: h -> p -> p
 
 -- | @p@ is a styling description for an element that allows a title to be
 -- specified.
@@ -27,9 +34,16 @@ class AttrTitle p where
     -- | Applies the given title to a styling description.
     title :: String -> p -> p
 
+-- | @p@ is a styling description for an element which can have a
+-- single embedded figure.
+class AttrContent a p | p -> a where
+
+    -- | Sets the content for the given styling description.
+    content :: a -> p -> p
+
 -- | @p@ is a styling description that allows a surronding margin to be
 -- specified.
-class AttrMargin w h p where
+class AttrMargin w h p | p -> w h where
 
     -- | Applies the given margin (specified by left, top, right, bottom
     -- components, in that order) to a styling description.
@@ -53,4 +67,8 @@ class AttrKey p where
 class HasDefault p where
 
     -- | The default style for @p@.
-    defaultStyle :: p
+    deft :: p
+
+-- | Constructs a style by applying a function to the default style.
+style :: (HasDefault p) => (p -> p) -> p
+style f = f deft

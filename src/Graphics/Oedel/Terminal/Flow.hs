@@ -1,6 +1,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ImplicitParams #-}
 module Graphics.Oedel.Terminal.Flow (
     TextStyle,
     Flow,
@@ -32,7 +33,7 @@ data TextStyle = TextStyle { textColor :: Color }
 instance AttrColor Color TextStyle where
     color c style = style { textColor = c }
 instance HasDefault TextStyle where
-    defaultStyle = TextStyle { textColor = snd defaultAppearance }
+    deft = TextStyle { textColor = snd defaultAppearance }
 
 -- | A figure, based in the terminal, which is linear and can be broken up at
 -- certain points, much like text.
@@ -51,12 +52,12 @@ instance Applicative f => Layout.FlowSpace Width (Flow f) where
         paint (back, offset) = Draw.space back offset width
         res = Flow 0 [(toPaint . (paint <$>), pure width, 0)]
 instance Applicative f => Layout.FlowText TextStyle (Flow f) where
-    tightText style str = res where
-        fore = textColor (style defaultStyle)
+    tightText str = res where
+        fore = textColor ?textStyle
         width = Width $ length str
         paint (back, offset) = Draw.string (back, fore) offset str
         res = Flow 0 [(toPaint . (paint <$>), pure width, 0)]
-    naturalSpace _ = Layout.space 1
+    naturalSpace = Layout.space 1
 
 -- | Describes a possible alignment of flow items within a line.
 newtype Alignment = Alignment {

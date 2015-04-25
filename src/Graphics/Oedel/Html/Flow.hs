@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ImplicitParams #-}
 module Graphics.Oedel.Html.Flow where
 
 import qualified Graphics.Oedel.Layout as Layout
@@ -42,10 +43,11 @@ instance Monoid a => Layout.Flow (Flow a) where
         renderInner = encloseFor "span" [("white-space", "pre")] $
             renderInner source }
 instance Monoid a => Layout.FlowText TextStyle (Flow a) where
-    text style str = Flow {
+    text str = Flow {
         hasSpace = True,
-        renderInner = encloseFor "span"
-            (textStyleToCss $ style defaultStyle) $ fromString str }
+        renderInner =
+            let style = textStyleToCss ?textStyle
+            in encloseFor "span" style $ fromString str }
 instance Monoid a => Layout.FlowSpace Length (Flow a) where
     strongSpace len = Flow {
         hasSpace = False,
@@ -54,16 +56,21 @@ instance Monoid a => Layout.FlowSpace Length (Flow a) where
             ("width", toCss len)] [] "" }
 
 -- | A possible style for text in a flow.
-data TextStyle = TextStyle { textColor :: Maybe Color }
+data TextStyle = TextStyle {
+    textColor :: Maybe Color,
+    textFontSize :: Maybe Length }
 instance AttrColor Color TextStyle where
     color c style = style { textColor = Just c }
 instance HasDefault TextStyle where
-    defaultStyle = TextStyle { textColor = Nothing }
+    deft = TextStyle {
+        textColor = Nothing,
+        textFontSize = Nothing }
 
 -- | Converts a 'TextStyle' to a list of CSS attributes.
 textStyleToCss :: TextStyle -> [(String, String)]
 textStyleToCss style = catMaybes [
-    (\color -> ("color", toCss color)) <$> textColor style]
+    (\color -> ("color", toCss color)) <$> textColor style,
+    (\size -> ("font-size", toCss size)) <$> textFontSize style]
 
 -- | A possible alignment for a flow.
 newtype Alignment = Alignment String

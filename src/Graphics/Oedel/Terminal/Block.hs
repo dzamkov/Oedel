@@ -151,9 +151,8 @@ instance (Applicative f) => Layout.BlockTrans (Block f) where
                         mh = max <$> hmh <*> lmh
                     in (mw, mh, \c -> hPaint c `over` lPaint c) }
 instance (Applicative f) => Layout.BlockBorder BorderStyle (Block f) where
-    withBorder style' block =
-        let style = style' Attr.defaultStyle
-            (l', t', r', b') = borderMargin style
+    withBorder style block =
+        let (l', t', r', b') = borderMargin style
             base = Layout.solid $ borderColor style
             l = Layout.setWidth l' base
             t = Layout.setHeight t' base
@@ -234,6 +233,6 @@ instance Attr.AttrColor Color BorderStyle where
 instance Attr.AttrMargin Width Height BorderStyle where
     margin l t r b style = style { borderMargin = (l, t, r, b) }
 instance Attr.HasDefault BorderStyle where
-    defaultStyle = BorderStyle {
+    deft = BorderStyle {
         borderMargin = (1, 1, 1, 1),
         borderColor = snd defaultAppearance }

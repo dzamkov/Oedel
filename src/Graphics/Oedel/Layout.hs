@@ -1,7 +1,10 @@
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE RankNTypes #-}
 module Graphics.Oedel.Layout where
 
 import Graphics.Oedel.Color (Color)
+import Graphics.Oedel.Attr (HasDefault (..))
 import Data.Monoid
 import Control.Applicative
 
@@ -42,24 +45,24 @@ class Flow a => FlowText p a | a -> p where
 
     -- | Constructs a figure displaying the given text with no internal
     -- breakpoints.
-    tightText :: (p -> p) -> String -> a
-    tightText style = tight . text style
+    tightText :: (?textStyle :: p) => String -> a
+    tightText = tight . text
 
     -- | A flow item corresponding to a space between words in text with
     -- the given styling description.
-    naturalSpace :: (p -> p) -> a
-    naturalSpace style = text style " "
+    naturalSpace :: (?textStyle :: p) => a
+    naturalSpace = text " "
 
     -- | Constructs a figure displaying the given text with natural breakpoints
     -- between each word.
-    text :: (p -> p) -> String -> a
-    text style = breakSpace where
-        breakWord a [] = tightText style (reverse a)
-        breakWord a (' ' : xs) = tightText style (reverse a) <> breakSpace xs
+    text :: (?textStyle :: p) => String -> a
+    text = breakSpace where
+        breakWord a [] = tightText (reverse a)
+        breakWord a (' ' : xs) = tightText (reverse a) <> breakSpace xs
         breakWord a (x : xs) = breakWord (x : a) xs
         breakSpace [] = mempty
         breakSpace (' ' : xs) = breakSpace xs
-        breakSpace (x : xs) = naturalSpace style <> breakWord [x] xs
+        breakSpace (x : xs) = naturalSpace <> breakWord [x] xs
 
 -- | @a@ is a flow-like figure with a means of displaying text that varies
 -- dynamically in a context of type @f@.
@@ -67,7 +70,20 @@ class (Applicative f, FlowText p a) => FlowTextDyn f p a | a -> f where
 
     -- | Constructs a figure displaying the given dynamic text with no internal
     -- breakpoints.
-    tightTextDyn :: (p -> p) -> f String -> a
+    tightTextDyn :: (?textStyle :: p) => f String -> a
+
+-- | Uses the default text style for an inner contenxt.
+withDefaultTextStyle :: (HasDefault p) => ((?textStyle :: p) => a) -> a
+withDefaultTextStyle inner =
+    let ?textStyle = deft
+    in inner
+
+-- | Modifies the text style for an inner context.
+withTextStyle :: (?textStyle :: p) => (p -> p) -> ((?textStyle :: p) => a) -> a
+withTextStyle f inner =
+    let curTextStyle = ?textStyle
+    in let ?textStyle = f curTextStyle
+    in inner
 
 -- | @a@ is a block-like figure, appearing as a rectangle whose size may take a
 -- range of values.
@@ -139,7 +155,7 @@ setBack color hi = over hi $ solid color
 class Block a => BlockBorder p a | a -> p where
 
     -- | Applies a border to a block.
-    withBorder :: (p -> p) -> a -> a
+    withBorder :: p -> a -> a
 
 -- | @l@ is a possible alignment for lines within a flow.
 class Alignment l where

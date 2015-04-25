@@ -49,7 +49,9 @@ instance Monoid a => Layout.FlowText TextStyle (Flow a) where
 instance Monoid a => Layout.FlowSpace Length (Flow a) where
     strongSpace len = Flow {
         hasSpace = False,
-        renderInner = enclose "span" [("width", toCss len)] [] "" }
+        renderInner = enclose "span" [
+            ("display", "inline-block"),
+            ("width", toCss len)] [] "" }
 
 -- | A possible style for text in a flow.
 data TextStyle = TextStyle { textColor :: Maybe Color }

@@ -112,7 +112,7 @@ instance (ReactiveState m e f, Monoid a)
 
 instance (ReactiveState m e f)
     => Oedel.Widget m e f (Widget m e f q) where
-        declare input output (Widget f) = Widget $ \env -> do
+        declare output input (Widget f) = Widget $ \env -> do
             (fig, update) <- f env
             nUpdate <- case Oedel.readEnv input env of
                 Nothing -> return update

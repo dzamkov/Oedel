@@ -61,7 +61,7 @@ class ReactiveState m e f => Widget m e f w | w -> e f where
     -- | Decorates a widget to, upon instantiation, read the given input,
     -- instantiate it with the current time, and then write it to the given
     -- output.
-    declare :: (Monoid a) => Input a (m b) -> Output a b -> w a -> w a
+    declare :: (Monoid a) => Output a b -> Input a (m b) -> w a -> w a
 
 -- | @w@ is a widget type that allows dynamic switching.
 class Widget m e f w => WidgetSwitch m e f w where

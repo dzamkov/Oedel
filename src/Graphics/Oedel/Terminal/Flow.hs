@@ -2,6 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE TypeFamilies #-}
 module Graphics.Oedel.Terminal.Flow (
     TextStyle,
     Flow,
@@ -12,7 +13,7 @@ module Graphics.Oedel.Terminal.Flow (
 
 import Prelude hiding (break)
 import qualified Graphics.Oedel.Layout as Layout
-import Graphics.Oedel.Attr
+import Graphics.Oedel.Style
 import Graphics.Oedel.Terminal.Base
 import Graphics.Oedel.Terminal.Paint
 import qualified Graphics.Oedel.Terminal.Draw as Draw
@@ -32,7 +33,7 @@ type Word f = f (Color, Point) -> Paint f
 data TextStyle = TextStyle { textColor :: Color }
 instance AttrColor Color TextStyle where
     color c style = style { textColor = c }
-instance HasDefault TextStyle where
+instance Style TextStyle where
     deft = TextStyle { textColor = snd defaultAppearance }
 
 -- | A figure, based in the terminal, which is linear and can be broken up at
@@ -51,7 +52,8 @@ instance Applicative f => Layout.FlowSpace Width (Flow f) where
     strongSpace width = res where
         paint (back, offset) = Draw.space back offset width
         res = Flow 0 [(toPaint . (paint <$>), pure width, 0)]
-instance Applicative f => Layout.FlowText TextStyle (Flow f) where
+instance Applicative f => Layout.FlowText (Flow f) where
+    type TextStyle (Flow f) = TextStyle
     tightText str = res where
         fore = textColor ?textStyle
         width = Width $ length str

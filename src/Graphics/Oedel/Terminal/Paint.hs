@@ -49,7 +49,7 @@ fromPaint (Over x y) = (<>) <$> fromPaint y <*> fromPaint x
 -- | Gets a 'Draw' behavior for a paint, along with an event which provides
 -- partial updates. Accumulating the partial update event should yield the
 -- draw behavior.
-signals :: (ReactiveDiscrete e f) => Paint f -> (f Draw, e Draw)
+signals :: (ReactiveDiscrete f) => Paint f -> (f Draw, D f Draw)
 signals (ToPaint source) = (source, snd <$> changes source)
 signals (Mix x y) = (rB, rC) where
     (xB, xC) = signals x
@@ -74,7 +74,7 @@ runPaint _ source = do -- TODO: use 'active' boolean behavior
             Just win <- Size.size
             return (Width $ Size.width win, Height $ Size.height win)
     curSize <- getSize
-    (sizeChanged, changeSize) <- IO.newEvent
+    (sizeChanged, changeSize) <- IO.spawnE
     size <- stepper curSize sizeChanged
     let paint = source size
     let (paintB, paintC) = signals paint

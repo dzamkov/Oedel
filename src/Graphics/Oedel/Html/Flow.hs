@@ -1,10 +1,11 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ImplicitParams #-}
 module Graphics.Oedel.Html.Flow where
 
 import qualified Graphics.Oedel.Layout as Layout
-import Graphics.Oedel.Attr
+import Graphics.Oedel.Style
 import Graphics.Oedel.Html.Base
 import Data.String
 import Data.Monoid
@@ -42,7 +43,8 @@ instance Monoid a => Layout.Flow (Flow a) where
     tight source = source {
         renderInner = encloseFor "span" [("white-space", "pre")] $
             renderInner source }
-instance Monoid a => Layout.FlowText TextStyle (Flow a) where
+instance Monoid a => Layout.FlowText (Flow a) where
+    type TextStyle (Flow a) = TextStyle
     text str = Flow {
         hasSpace = True,
         renderInner =
@@ -55,20 +57,20 @@ instance Monoid a => Layout.FlowSpace Length (Flow a) where
             ("display", "inline-block"),
             ("width", toCss len)] [] "" }
 
--- | A possible style for text in a flow.
+-- | A style for text within a 'Flow'.
 data TextStyle = TextStyle {
     textColor :: Maybe Color,
     textFontSize :: Maybe Length }
+instance Style TextStyle where
+    deft = TextStyle {
+        textColor = Nothing,
+        textFontSize = Nothing }
 instance AttrColor Color TextStyle where
     color c style = style { textColor = Just c }
 instance AttrFontSize Length TextStyle where
     fontSize h style = style { textFontSize = Just h }
-instance HasDefault TextStyle where
-    deft = TextStyle {
-        textColor = Nothing,
-        textFontSize = Nothing }
 
--- | Converts a 'TextStyle' to a list of CSS attributes.
+-- | Converts a 'TextStyle' into a list of CSS attributes.
 textStyleToCss :: TextStyle -> [(String, String)]
 textStyleToCss style = catMaybes [
     (\color -> ("color", toCss color)) <$> textColor style,

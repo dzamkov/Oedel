@@ -20,7 +20,7 @@ library
                        Control.Reactive
                        Control.Reactive.IO
                        Graphics.Oedel.Color
-                       Graphics.Oedel.Attr
+                       Graphics.Oedel.Style
                        Graphics.Oedel.Layout
                        Graphics.Oedel.Widget
                        Graphics.Oedel.Widget.DynamicEnv

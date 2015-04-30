@@ -1,6 +1,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE AutoDeriveTypeable #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Control.Reactive.IO (
     Event (..),
     never,
@@ -8,7 +10,7 @@ module Control.Reactive.IO (
     mapE,
     filterJust,
     memoE,
-    newEvent,
+    spawnE,
     registerEternal,
     registerSafeEternal,
     await,
@@ -19,14 +21,14 @@ module Control.Reactive.IO (
     accumB,
     changes,
     memoB,
-    newBehavior,
     registerBehaviorEternal
 ) where
 
 import Prelude hiding (map)
 import Control.Reactive (
-    Reactive, ReactiveState,
-    ReactiveDiscrete, ReactiveSwitch)
+    ReactiveState,
+    ReactiveDiscrete,
+    ReactiveSwitch)
 import qualified Control.Reactive as Reactive
 import Data.IORef
 import System.IO.Unsafe
@@ -51,7 +53,13 @@ instance Monoid (Event a) where
 instance Functor Event where
     fmap f = memoE . mapE f
 instance Reactive.Event Event where
+    type Moment Event = IO
+    defer = unsafePerformIO . execute
     filterJust = filterJust
+instance Reactive.MonadReactive Event IO where
+    spawnE = spawnE
+    liftMoment = id
+    execute = execute
 -- TODO: EventSubdivide implementation
 
 -- | An event that never occurs.
@@ -82,17 +90,17 @@ memoE :: Event a -> Event a
 memoE source = source -- TODO
 
 -- | Begins executing the procedures given by an event.
-executeIO :: Event (IO a) -> IO (Event a)
-executeIO source = do
-    (res, fire) <- newEvent
-    register source $ \proc -> proc >>= fire
+execute :: Event (IO a) -> IO (Event a)
+execute source = do
+    (res, fire) <- spawnE
+    registerEternal source $ \proc -> proc >>= fire
     return res
 
 -- | Constructs a new event that can be manually fired by invoking the returned
 -- procedure, which is not thread-safe and should have at most one instance
 -- running at a time.
-newEvent :: IO (Event a, a -> IO ())
-newEvent = do
+spawnE :: IO (Event a, a -> IO ())
+spawnE = do
     ref <- newIORef []
     let register h = atomicModifyIORef ref $ \l -> (h : l, ())
         fire val = do
@@ -159,17 +167,17 @@ instance Applicative Behavior where
         value = return x,
         registerInvalidate = const $ return () }
     (<*>) f x = memoB $ lift2 id f x
-instance Reactive Event Behavior where
-    (<@>) f x = memoE $ tag id f x
-instance ReactiveState IO Event Behavior where
-    accumB = accumB
+instance Reactive.Behavior IO Behavior where
     sample = value
-    execute = unsafePerformIO . executeIO
-instance ReactiveDiscrete Event Behavior where
+instance ReactiveState Event where
+    type I Event = Behavior
+    accumB = accumB
+instance ReactiveDiscrete Behavior where
+    type D Behavior = Event
     changes = memoE . changes
-instance ReactiveSwitch Event Behavior Event where
+instance ReactiveSwitch Behavior Event where
     switch = switchE
-instance ReactiveSwitch Event Behavior Behavior where
+instance ReactiveSwitch Behavior Behavior where
     switch = switchB
 
 -- | Maps a behavior without memoization.
@@ -289,14 +297,6 @@ switchE = error "not implemented" -- TODO
 -- | Dynamically switches between behaviors.
 switchB :: Behavior (Behavior a) -> Behavior a
 switchB = error "not implemented" -- TODO
-
--- | Constructs a new behavior that can be manually changed by invoking the
--- returned procedure.
-newBehavior :: a -> IO (Behavior a, (a -> a) -> IO ())
-newBehavior initial = do
-    (event, change) <- newEvent
-    behavior <- Reactive.accumB initial event
-    return (behavior, change)
 
 -- | Registers a procedure to be called every time the given behavior
 -- changes (as determined by '=='), and initially, right after registration.

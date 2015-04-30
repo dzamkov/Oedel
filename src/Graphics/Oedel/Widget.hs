@@ -1,7 +1,11 @@
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE RankNTypes #-}
 module Graphics.Oedel.Widget where
 
 import Data.Monoid
+import Graphics.Oedel.Style
 import Control.Reactive
 import Control.Applicative
 
@@ -56,24 +60,42 @@ undyn (InputDyn inp) = inp
 -- | @w a@ is a description of an interactive figure within an environment of
 -- type @a@. Widgets can read from and write to their environment, and widgets
 -- with the same environment type can be composed as figures.
-class ReactiveState m e f => Widget m e f w | w -> e f where
+class ReactiveState e => Widget e w | w -> e where
 
     -- | Decorates a widget to, upon instantiation, read the given input,
     -- instantiate it with the current time, and then write it to the given
     -- output.
-    declare :: (Monoid a) => Output a b -> Input a (m b) -> w a -> w a
+    declare :: (Monoid a) => Output a b -> Input a (Moment e b) -> w a -> w a
 
 -- | @w@ is a widget type that allows dynamic switching.
-class Widget m e f w => WidgetSwitch m e f w where
+class Widget e w => WidgetSwitch e w where
 
     -- | Constructs a widget whose contents dynamically switch between
     -- widgets. The initial widget is given, along with an event that selects
     -- other widgets.
-    frame :: w a -> Input a (e (w a)) -> w a
+    frame :: (Monoid a) => w a -> Input a (e (w a)) -> w a
 
 -- | @w@ is a widget type that allows the construction of buttons.
-class Widget m e f w => WidgetButton p m e f w | w -> p where
+class (Widget e w, Style (ButtonStyle w)) => WidgetButton e w where
 
-    -- | Constructs a button widget with the given style. The given output
-    -- event will occur when the button is pressed.
-    button :: p -> Output a (e ()) -> w a
+    -- | A style for a button for a widget of type @w@.
+    type ButtonStyle w
+
+    -- | Constructs a button widget enclosing the given widget.
+    -- The given output event will occur when the button is pressed.
+    button :: (?buttonStyle :: ButtonStyle w, Monoid a)
+        => Output a (e ()) -> w a -> w a
+
+-- | Uses the default button style for an inner contenxt.
+withDefaultButtonStyle :: (Style p) => ((?buttonStyle :: p) => a) -> a
+withDefaultButtonStyle inner =
+    let ?buttonStyle = deft
+    in inner
+
+-- | Modifies the button style within an inner context.
+withButtonStyle :: (?buttonStyle :: p)
+    => (p -> p) -> ((?buttonStyle :: p) => a) -> a
+withButtonStyle f inner =
+    let curStyle = ?buttonStyle
+    in let ?buttonStyle = f curStyle
+    in inner

@@ -18,8 +18,8 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as ByteString
 import qualified Data.Map as Map
 import Data.Monoid
-import Control.Reactive ((<@>))
-import Control.Reactive.IO
+import Control.Reactive
+import qualified Control.Reactive.IO as IO
 import Control.Applicative
 import Control.Monad (void)
 
@@ -75,17 +75,17 @@ parsePost = Map.fromList .
 -- | Opens a browser to display the given HTML widget and allow the user
 -- to interact with it. This returns when the user pressed "enter"
 -- in the terminal.
-displayHtmlWidget :: (Monoid a) => Widget IO Event Behavior Block a -> IO ()
+displayHtmlWidget :: (Monoid a) => Widget IO.Event Block a -> IO ()
 displayHtmlWidget widget = do
     sock <- bindAny
     port <- socketPort sock
-    (post, makePost) <- newEvent
+    (post, makePost) <- spawnE
     app <- runWidget widget (\givePost -> do
-        (mapping, setMapping) <- newBehavior (error "POST before GET")
+        (mapping, setMapping) <- spawnB (error "POST before GET")
         (_, fig) <- givePost $ flip (,) <$> mapping <@> post
         let app req res = case requestMethod req of
                 "GET" -> do
-                    block <- value fig
+                    block <- liftMoment $ sample fig
                     let (html, nMapping) = blockToHtml block
                     setMapping $ const nMapping
                     res $ responseLBS status200

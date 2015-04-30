@@ -13,11 +13,11 @@ module Graphics.Oedel.Terminal.Widget (
 import Control.Reactive
 import qualified Control.Reactive.IO as IO
 import qualified Graphics.Oedel.Layout as Layout
-import Graphics.Oedel.Attr hiding (key)
+import Graphics.Oedel.Style hiding (key)
 import Graphics.Oedel.Terminal.Base
 import Graphics.Oedel.Terminal.Input
 import Graphics.Oedel.Terminal.Flow (Flow, TextStyle)
-import Graphics.Oedel.Terminal.Block (Block, BorderStyle)
+import Graphics.Oedel.Terminal.Block (Block)
 import Graphics.Oedel.Terminal.Paint (runPaint)
 import qualified Graphics.Oedel.Terminal.Block as Block
 import Data.Set (Set)

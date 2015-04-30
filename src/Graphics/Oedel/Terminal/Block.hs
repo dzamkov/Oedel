@@ -2,13 +2,11 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Graphics.Oedel.Terminal.Block (
     Opacity (..),
-    Block (..),
-    BorderStyle
+    Block (..)
 ) where
 
 import Graphics.Oedel.Layout ((===), (|||))
 import qualified Graphics.Oedel.Layout as Layout
-import qualified Graphics.Oedel.Attr as Attr
 import qualified Graphics.Oedel.Terminal.Draw as Draw
 import Graphics.Oedel.Terminal.Base
 import Graphics.Oedel.Terminal.Paint
@@ -150,15 +148,6 @@ instance (Applicative f) => Layout.BlockTrans (Block f) where
                         mw = max <$> hmw <*> lmw
                         mh = max <$> hmh <*> lmh
                     in (mw, mh, \c -> hPaint c `over` lPaint c) }
-instance (Applicative f) => Layout.BlockBorder BorderStyle (Block f) where
-    withBorder style block =
-        let (l', t', r', b') = borderMargin style
-            base = Layout.solid $ borderColor style
-            l = Layout.setWidth l' base
-            t = Layout.setHeight t' base
-            r = Layout.setWidth r' base
-            b = Layout.setHeight b' base
-        in t === l ||| block ||| r === b
 instance (Applicative f) => Layout.FlowToBlock
     Flow.Alignment (Flow f) (Block f) where
         block alignment flow = Block {
@@ -218,21 +207,3 @@ paintTrans :: (Applicative f) => f Offset
 paintTrans offset source context = source $
     (\(ox, oy) (back, (x, y)) -> (back, (x + ox, y + oy)))
     <$> offset <*> context
-
--- | Describes the style of block border.
-data BorderStyle = BorderStyle {
-
-    -- | The margin for the border.
-    borderMargin :: (Width, Height, Width, Height),
-
-    -- | The color of the border.
-    borderColor :: Color }
-
-instance Attr.AttrColor Color BorderStyle where
-    color c style = style { borderColor = c }
-instance Attr.AttrMargin Width Height BorderStyle where
-    margin l t r b style = style { borderMargin = (l, t, r, b) }
-instance Attr.HasDefault BorderStyle where
-    deft = BorderStyle {
-        borderMargin = (1, 1, 1, 1),
-        borderColor = snd defaultAppearance }

@@ -1,16 +1,17 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Graphics.Oedel.Html.Widget where
 
 import Graphics.Oedel.Layout ((|||), (===))
 import qualified Graphics.Oedel.Layout as Layout
 import qualified Graphics.Oedel.Widget as Oedel
-import Graphics.Oedel.Attr
 import Graphics.Oedel.Html.Base
-import Graphics.Oedel.Html.Flow (Flow (..), TextStyle)
+import Graphics.Oedel.Html.Flow (Flow (..))
 import qualified Graphics.Oedel.Html.Flow as Flow
 import Graphics.Oedel.Html.Block (Block)
 import Data.String
@@ -27,13 +28,13 @@ type Post = Map ByteString ByteString
 
 -- | Augments an HTML figure of type @q@ with the ability to interact with
 -- the user and access an environment of type @a@. Widgets live in a
--- reactive system with event type @e@ and behavior type @f@.
-data Widget m e f q a = forall b. (Monoid b)
-    => Widget (a -> m (f (q b), e (Post, b) -> a))
+-- reactive system with event type @e@.
+data Widget e q a = forall b. (Monoid b)
+    => Widget (a -> Moment e (I e (q b), e (Post, b) -> a))
 
 -- | Runs a widget.
-runWidget :: (ReactiveState m e f, Monoid a) => Widget m e f q a
-    -> (forall b. (e (Post, b) -> m (a, f (q b))) -> r) -> r
+runWidget :: (ReactiveState e, Monoid a) => Widget e q a
+    -> (forall b. (e (Post, b) -> Moment e (a, I e (q b))) -> r) -> r
 runWidget (Widget f) inner = inner (\post -> do
     (_, update') <- f mempty
     (_, update) <- f (update' post)
@@ -42,24 +43,24 @@ runWidget (Widget f) inner = inner (\post -> do
     return (env, fig))
 
 -- | Converts a static figure into a widget.
-augment :: (ReactiveState m e f, Monoid a) => q () -> Widget m e f q a
+augment :: (ReactiveState e, Monoid a) => q () -> Widget e q a
 augment fig = Widget $ const $ return (pure fig, const mempty)
 
 -- | Applies a function to the underlying figure for a widget.
-decorate :: (ReactiveState m e f)
+decorate :: (ReactiveState e)
     => (forall a. (Monoid a) => q a -> r a)
-    -> Widget m e f q a
-    -> Widget m e f r a
+    -> Widget e q a
+    -> Widget e r a
 decorate f (Widget inner) = Widget $ \env -> do
     (innerFig, update) <- inner env
     return (f <$> innerFig, update)
 
 -- | Composes widgets by composing their underlying figures naturally.
-compose :: (ReactiveState m e f, Functor q, Functor p, Monoid a)
+compose :: (ReactiveState e, Functor q, Functor p, Monoid a)
     => (forall a. (Monoid a) => q a -> p a -> r a)
-    -> Widget m e f q a
-    -> Widget m e f p a
-    -> Widget m e f r a
+    -> Widget e q a
+    -> Widget e p a
+    -> Widget e r a
 compose f (Widget x) (Widget y) = Widget $ \env -> do
     (xFig', xUpdate) <- x env
     (yFig', yUpdate) <- y env
@@ -70,49 +71,46 @@ compose f (Widget x) (Widget y) = Widget $ \env -> do
             yUpdate ((\(p, m) -> (p, fromJust $ snd m)) <$> post)
     return (f <$> xFig <*> yFig, update)
 
-instance (ReactiveState m e f, Monoid a)
-    => Monoid (Widget m e f Flow a) where
-        mempty = augment mempty
-        mappend = compose mappend
-instance (ReactiveState m e f, Monoid a)
-    => Layout.Flow (Widget m e f Flow a) where
+instance (ReactiveState e, Monoid a) => Monoid (Widget e Flow a) where
+    mempty = augment mempty
+    mappend = compose mappend
+instance (ReactiveState e, Monoid a) => Layout.Flow (Widget e Flow a) where
         tight = decorate Layout.tight
-instance (ReactiveState m e f, Monoid a)
-    => Layout.FlowText TextStyle (Widget m e f Flow a) where
-        text = augment . Layout.text
-instance (ReactiveState m e f, Monoid a)
-    => Layout.FlowTextDyn (Oedel.InputDyn f a)
-    TextStyle (Widget m e f Flow a) where
+instance (ReactiveState e, Monoid a) => Layout.FlowText (Widget e Flow a) where
+    type TextStyle (Widget e Flow a) = Layout.TextStyle (Flow a)
+    text = augment . Layout.text
+instance (ReactiveState e, Monoid a, f ~ I e)
+    => Layout.FlowTextDyn (Oedel.InputDyn f a) (Widget e Flow a) where
         tightTextDyn inp = Widget $ \env ->
             return ((Layout.tightText :: String -> Flow ()) <$>
                 fromMaybe (pure "") (Oedel.readEnv (Oedel.undyn inp) env),
                 const mempty)
-instance (ReactiveState m e f, Monoid a)
-    => Layout.FlowSpace Length (Widget m e f Flow a) where
+instance (ReactiveState e, Monoid a)
+    => Layout.FlowSpace Length (Widget e Flow a) where
         strongSpace = augment . Layout.strongSpace
-instance (ReactiveState m e f, Monoid a)
-    => Layout.Block (Widget m e f Block a) where
+instance (ReactiveState e, Monoid a)
+    => Layout.Block (Widget e Block a) where
         (|||) = compose (|||)
         (===) = compose (===)
         compact = decorate Layout.compact
-instance (ReactiveState m e f, Monoid a)
-    => Layout.BlockSize Length Length (Widget m e f Block a) where
+instance (ReactiveState e, Monoid a)
+    => Layout.BlockSize Length Length (Widget e Block a) where
         setWidth width = decorate (Layout.setWidth width)
         setHeight height = decorate (Layout.setHeight height)
-instance (ReactiveState m e f, Monoid a)
-    => Layout.BlockSolid Color (Widget m e f Block a) where
+instance (ReactiveState e, Monoid a)
+    => Layout.BlockSolid Color (Widget e Block a) where
         solid = augment . Layout.solid
-instance (ReactiveState m e f, Monoid a)
-    => Layout.BlockTrans (Widget m e f Block a) where
+instance (ReactiveState e, Monoid a)
+    => Layout.BlockTrans (Widget e Block a) where
         clear = augment Layout.clear
         over = compose Layout.over
-instance (ReactiveState m e f, Monoid a)
+instance (ReactiveState e, Monoid a)
     => Layout.FlowToBlock Flow.Alignment
-    (Widget m e f Flow a) (Widget m e f Block a) where
+    (Widget e Flow a) (Widget e Block a) where
         block alignment = decorate (Layout.block alignment)
 
-instance (ReactiveState m e f)
-    => Oedel.Widget m e f (Widget m e f q) where
+instance (ReactiveState e)
+    => Oedel.Widget e (Widget e q) where
         declare output input (Widget f) = Widget $ \env -> do
             (fig, update) <- f env
             nUpdate <- case Oedel.readEnv input env of
@@ -121,33 +119,27 @@ instance (ReactiveState m e f)
                     value <- cons
                     return ((<> Oedel.putEnv output value) . update)
             return (fig, nUpdate)
-instance (ReactiveState m e f)
-    => Oedel.WidgetButton ButtonStyle m e f (Widget m e f Flow) where
-        button style output = res where
-            fig = Flow {
+instance (ReactiveState e) => Oedel.WidgetButton e (Widget e Flow) where
+    type ButtonStyle (Widget e Flow) = ()
+    button output (Widget inner) = Widget $ \env -> do
+        (innerFig, innerUpdate) <- inner env
+        let fig = (\innerFig -> Flow {
                 Flow.hasSpace = False,
                 Flow.renderInner = do
                     makeInteractive
                     name <- newName
-                    let inner = Flow.renderInner $ buttonContent style
-                    "<button type=\"submit\" name=\"submit\" value=\"" <>
-                        fromString name <> ("\">" :: Html ()) <>
+                    let inner = Flow.renderInner innerFig
+                    innerMapping <- "<button type=\"submit\" " <>
+                        "name=\"submit\" value=\"" <>
+                        fromString name <> "\">" <>
                         noInherit inner <> "</button>"
-                    return (Just $ fromString name) }
-            update post = Oedel.putEnv output $ filterJust $
-                (\(post, mapping) ->
+                    return (innerMapping, Just $ fromString name) })
+                <$> innerFig
+            update' post = Oedel.putEnv output $ filterJust $
+                (\(post, (_, mapping)) ->
                     case (Map.lookup "submit" post, mapping) of
                         (Just val, Just name) | val == name -> Just ()
                         _ -> Nothing) <$> post
-            res = Widget $ const $ return (pure fig, update)
-
--- | Gives styling information for a button.
-data ButtonStyle = ButtonStyle {
-    buttonContent :: Flow () }
-instance AttrContent (Flow ()) ButtonStyle where
-    content flow style = style { buttonContent = flow }
-instance AttrTitle ButtonStyle where
-    title str style = Layout.withDefaultTextStyle $
-        style { buttonContent = Layout.text str }
-instance HasDefault ButtonStyle where
-    deft = ButtonStyle { buttonContent = mempty }
+            update post = update' post <>
+                innerUpdate ((\(p, (m, _)) -> (p, m)) <$> post)
+        return (fig, update)

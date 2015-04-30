@@ -3,8 +3,8 @@ module Control.Reactive.Test where
 import Test.Framework
 import Test.Framework.Providers.HUnit
 import Test.HUnit hiding (Test)
-import Control.Reactive
-import Control.Reactive.IO (newEvent, await, value)
+import Control.Reactive hiding (spawnE)
+import Control.Reactive.IO (spawnE, await, value)
 import Control.Applicative
 import Control.Concurrent
 import Control.Monad
@@ -14,7 +14,7 @@ test :: Test
 test = testGroup "IO FRP" [
 
     testCase "simple accum" $ do
-        (updateE, update) <- newEvent
+        (updateE, update) <- spawnE
         behavior <- accumB (0 :: Int) updateE
         cur <- value behavior
         assertEqual "Initial value" 0 cur
@@ -26,8 +26,8 @@ test = testGroup "IO FRP" [
         assertEqual "After multiplty" 6 cur,
 
     testCase "up/down counter" $ do
-        (upE, up) <- newEvent
-        (downE, down) <- newEvent
+        (upE, up) <- spawnE
+        (downE, down) <- spawnE
         let change = ((+ 1) <$ upE) <> ((\x -> x - 1) <$ downE)
         behavior <- accumB (0 :: Int) change
         up () >> up ()
@@ -44,23 +44,29 @@ test = testGroup "IO FRP" [
         cur <- value behavior
         assertEqual "for part 4: " 2 cur,
 
-    testCase "multi-threaded up counter" $ do
-        (upE, up) <- newEvent
+    testCase "long up counter" $ do
+        (upE, up) <- spawnE
         behavior <- accumB (0 :: Int) ((+ 1) <$ upE)
-        let up100 = forM_ [(0 :: Int) .. 99] $ const $ threadDelay 1 >> up ()
-            forkUp100 = do
-                ref <- newEmptyMVar
-                forkIO $ do
-                    up100
-                    putMVar ref ()
-                return ref
-        refs <- forM [(0 :: Int) .. 99] $ const forkUp100
+        forM_ [(0 :: Int) .. 9999] $ const $ up ()
+        cur <- value behavior
+        assertEqual "Final count" 10000 cur,
+
+    testCase "multi-threaded up counter" $ do
+        (upEs, ups) <- unzip <$> forM [(0 :: Int) .. 99] (const spawnE)
+        let upE = foldr1 union upEs
+        behavior <- accumB (0 :: Int) ((+ 1) <$ upE)
+        refs <- forM ups $ \up -> do
+            ref <- newEmptyMVar
+            forkIO $ do
+                forM_ [(0 :: Int) .. 99] $ const $ threadDelay 1 >> up ()
+                putMVar ref ()
+            return ref
         forM_ refs takeMVar
         cur <- value behavior
         assertEqual "Final count" 10000 cur,
 
     testCase "sharing" $ do
-        (updateE, update) <- newEvent
+        (updateE, update) <- spawnE
         behavior <- accumB (0 :: Integer) updateE
         let shared = iterate (\x -> (+) <$> x <*> x) behavior !! 100
         cur <- value shared
@@ -70,8 +76,8 @@ test = testGroup "IO FRP" [
         assertEqual "After set" (2 ^ (100 :: Integer)) cur,
 
     testCase "tag" $ do
-        (updateE, update) <- newEvent
-        (readE, read) <- newEvent
+        (updateE, update) <- spawnE
+        (readE, read) <- spawnE
         source <- accumB (0 :: Int) updateE
         let addE = (\x _ y -> x + y) <$> source <@> readE
         res <- accumB (0 :: Int) addE
@@ -83,8 +89,8 @@ test = testGroup "IO FRP" [
         assertEqual "Final value" 3 cur,
 
     testCase "await" $ do
-        (takeE, take) <- newEvent
-        (giveE, give) <- newEvent
+        (takeE, take) <- spawnE
+        (giveE, give) <- spawnE
         forkIO $ do
             val <- await takeE
             give (val * 2)

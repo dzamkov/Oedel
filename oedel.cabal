@@ -63,3 +63,9 @@ executable oedel-example-counter
   build-depends:       base >=4.7 && <4.8,
                        oedel
   default-language:    Haskell2010
+
+executable oedel-example-planet-checker
+  main-is:             doc/examples/PlanetChecker.hs
+  build-depends:       base >=4.7 && <4.8,
+                       oedel
+  default-language:    Haskell2010

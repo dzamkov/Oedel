@@ -99,3 +99,28 @@ withButtonStyle f inner =
     let curStyle = ?buttonStyle
     in let ?buttonStyle = f curStyle
     in inner
+
+-- | @w@ is a widget type that allows the construction of text boxes.
+class (Widget e w, Style (TextBoxStyle w)) => WidgetTextBox e w where
+
+    -- | A style for a text box for a widget of type @w@.
+    type TextBoxStyle w
+
+    -- | Constructs a text box. The given output behavior will provide the
+    -- text box contents.
+    textBox :: (?textBoxStyle :: TextBoxStyle w, Monoid a)
+        => Output a (I e String) -> w a
+
+-- | Uses the default button style for an inner contenxt.
+withDefaultTextBoxStyle :: (Style p) => ((?textBoxStyle :: p) => a) -> a
+withDefaultTextBoxStyle inner =
+    let ?textBoxStyle = deft
+    in inner
+
+-- | Modifies the button style within an inner context.
+withTextBoxStyle :: (?textBoxStyle :: p)
+    => (p -> p) -> ((?textBoxStyle :: p) => a) -> a
+withTextBoxStyle f inner =
+    let curStyle = ?textBoxStyle
+    in let ?textBoxStyle = f curStyle
+    in inner

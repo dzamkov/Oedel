@@ -89,3 +89,20 @@ class (Widget e w, Style p) => WidgetTextBox p e w where
     -- | Constructs a text box. The given output behavior will provide the
     -- text box contents.
     textBox :: (?style :: p, Monoid a) => Output a (I e String) -> w a
+
+-- | @w@ is a widget type that allows the construction of option selectors that
+-- can be styled with a description of type @p@.
+class (Widget e w, Style p) => WidgetOption p o e w | w -> o where
+
+    -- | Constructs an option selector (combo box or radio buttons) displaying
+    -- the given options. The given output behavior will provide the currently
+    -- selected option.
+    options :: (?style :: p, Monoid a) => Output a (I e b) -> [(o, b)] -> w a
+
+-- | @w@ is a widget type that allows the construction of check boxes that
+-- can be styled with a description of type @p@.
+class (Widget e w, Style p) => WidgetCheckBox p e w where
+
+    -- | Constructs a check box. The given output behavior will provide the
+    -- current checked state.
+    checkBox :: (?style :: p, Monoid a) => Output a (I e Bool) -> w a

@@ -5,6 +5,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ImplicitParams #-}
 module Graphics.Oedel.Html.Widget where
 
 import Graphics.Oedel.Layout ((|||), (===))
@@ -22,6 +23,7 @@ import qualified Data.Map as Map
 import Data.Maybe (fromJust, fromMaybe)
 import Data.Monoid
 import Control.Reactive
+import Control.Monad.State
 import Control.Applicative
 
 -- | Describes the data in a post request.
@@ -154,3 +156,62 @@ instance (ReactiveState e) => Oedel.WidgetTextBox Style e (Widget e Flow) where
                     Nothing -> Nothing) <$> post
         value <- accumB "" change
         return (pure fig, Oedel.putEnv output value)
+instance (ReactiveState e)
+    => Oedel.WidgetOption Style String e (Widget e Flow) where
+        options = comboBox
+instance (ReactiveState e)
+    => Oedel.WidgetCheckBox Style e (Widget e Flow) where
+        checkBox = checkBox
+
+-- | Constructs a combo box.
+comboBox :: (?style :: p, ReactiveState e, Monoid a)
+    => Oedel.Output a (I e b)
+    -> [(String, b)]
+    -> Widget e Flow a
+comboBox output items = Widget $ \_ post -> do
+    let buildInner = forM_ items $ \(key, value) -> do
+            name <- lift $ do
+                name <- newName
+                "<option value=\"" <> (fromString name :: Html ()) <> "\">"
+                fromString key :: Html ()
+                "</option>" :: Html ()
+                return name
+            modify (Map.insert (fromString name) value)
+        fig = Flow {
+            Flow.hasSpace = False,
+            Flow.renderInner = do
+                makeInteractive
+                name <- newName
+                "<select name=\"" <>
+                    (fromString name :: Html ()) <> "\">"
+                (_, mapping) <- runStateT buildInner Map.empty
+                "</select>" :: Html ()
+                return (mapping, fromString name) }
+        change = (const <$>) $ filterJust $ (\(post, (mapping, name)) ->
+            case Map.lookup name post of
+                Just value -> case Map.lookup value mapping of
+                    Just res -> Just res
+                    Nothing -> Nothing
+                Nothing -> Nothing) <$> post
+    value <- accumB (snd $ head items) change
+    return (pure fig, Oedel.putEnv output value)
+
+-- | Constructs a check box.
+checkBox :: (?style :: p, ReactiveState e, Monoid a)
+    => Oedel.Output a (I e Bool)
+    -> Widget e Flow a
+checkBox output = Widget $ \_ post -> do
+    let fig = Flow {
+            Flow.hasSpace = False,
+            Flow.renderInner = do
+                makeInteractive
+                name <- newName
+                "<input type=\"checkbox\" name=\"" <>
+                    (fromString name :: Html ()) <> "\">"
+                return (fromString name) }
+        change = (const <$>) $ filterJust $ (\(post, name) ->
+            case Map.lookup name post of
+                Just _ -> Just True
+                Nothing -> Just False) <$> post
+    value <- accumB False change
+    return (pure fig, Oedel.putEnv output value)

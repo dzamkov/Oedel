@@ -6,7 +6,7 @@ main :: IO ()
 main = displayHtmlStatic $
     setBack (rgb 0.8 0.9 1.0) $
     inset $ withBorder () $
-    setBack (rgb 0.8 1.0 0.8) $
+    setBack white $
     setWidth 300 $ setHeight 90 $
     pad 10 10 10 10 $
     block center $

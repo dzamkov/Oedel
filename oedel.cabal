@@ -58,6 +58,12 @@ test-suite tests
                        test-framework-hunit
   default-language:    Haskell2010
 
+executable oedel-example-fancy
+  main-is:             doc/examples/Fancy.hs
+  build-depends:       base >=4.7 && <4.8,
+                       oedel
+  default-language:    Haskell2010
+
 executable oedel-example-counter
   main-is:             doc/examples/Counter.hs
   build-depends:       base >=4.7 && <4.8,

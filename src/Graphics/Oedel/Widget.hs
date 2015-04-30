@@ -1,6 +1,5 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE ImplicitParams #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE RankNTypes #-}
 module Graphics.Oedel.Widget where
 
@@ -75,52 +74,18 @@ class Widget e w => WidgetSwitch e w where
     -- other widgets.
     frame :: (Monoid a) => w a -> Input a (e (w a)) -> w a
 
--- | @w@ is a widget type that allows the construction of buttons.
-class (Widget e w, Style (ButtonStyle w)) => WidgetButton e w where
-
-    -- | A style for a button for a widget of type @w@.
-    type ButtonStyle w
+-- | @w@ is a widget type that allows the construction of buttons
+-- that can be styled with a description of type @p@.
+class (Widget e w, Style p) => WidgetButton p e w where
 
     -- | Constructs a button widget enclosing the given widget.
     -- The given output event will occur when the button is pressed.
-    button :: (?buttonStyle :: ButtonStyle w, Monoid a)
-        => Output a (e ()) -> w a -> w a
+    button :: (?style :: p, Monoid a) => Output a (e ()) -> w a -> w a
 
--- | Uses the default button style for an inner contenxt.
-withDefaultButtonStyle :: (Style p) => ((?buttonStyle :: p) => a) -> a
-withDefaultButtonStyle inner =
-    let ?buttonStyle = deft
-    in inner
-
--- | Modifies the button style within an inner context.
-withButtonStyle :: (?buttonStyle :: p)
-    => (p -> p) -> ((?buttonStyle :: p) => a) -> a
-withButtonStyle f inner =
-    let curStyle = ?buttonStyle
-    in let ?buttonStyle = f curStyle
-    in inner
-
--- | @w@ is a widget type that allows the construction of text boxes.
-class (Widget e w, Style (TextBoxStyle w)) => WidgetTextBox e w where
-
-    -- | A style for a text box for a widget of type @w@.
-    type TextBoxStyle w
+-- | @w@ is a widget type that allows the construction of text boxes that
+-- can be styled with a description of type @p@.
+class (Widget e w, Style p) => WidgetTextBox p e w where
 
     -- | Constructs a text box. The given output behavior will provide the
     -- text box contents.
-    textBox :: (?textBoxStyle :: TextBoxStyle w, Monoid a)
-        => Output a (I e String) -> w a
-
--- | Uses the default button style for an inner contenxt.
-withDefaultTextBoxStyle :: (Style p) => ((?textBoxStyle :: p) => a) -> a
-withDefaultTextBoxStyle inner =
-    let ?textBoxStyle = deft
-    in inner
-
--- | Modifies the button style within an inner context.
-withTextBoxStyle :: (?textBoxStyle :: p)
-    => (p -> p) -> ((?textBoxStyle :: p) => a) -> a
-withTextBoxStyle f inner =
-    let curStyle = ?textBoxStyle
-    in let ?textBoxStyle = f curStyle
-    in inner
+    textBox :: (?style :: p, Monoid a) => Output a (I e String) -> w a

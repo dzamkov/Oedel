@@ -5,7 +5,6 @@
 module Graphics.Oedel.Html.Flow where
 
 import qualified Graphics.Oedel.Layout as Layout
-import Graphics.Oedel.Style
 import Graphics.Oedel.Html.Base
 import Data.String
 import Data.Monoid
@@ -25,7 +24,7 @@ data Flow a = Flow {
 
 -- | Converts a flow into its HTML representation.
 render :: Alignment -> Flow a -> Html a
-render alignment flow = encloseFor "span" (catMaybes [
+render alignment flow = encloseFor "span" (listToStyle $ catMaybes [
     Just ("text-align", toCss alignment),
     if hasSpace flow then Just ("white-space", "pre-wrap") else Nothing]) $
     renderInner flow
@@ -41,40 +40,21 @@ instance Monoid a => Monoid (Flow a) where
         renderInner = renderInner x <> "&#8203;" <> renderInner y }
 instance Monoid a => Layout.Flow (Flow a) where
     tight source = source {
-        renderInner = encloseFor "span" [("white-space", "pre")] $
+        renderInner = encloseFor "span"
+            (listToStyle [("white-space", "pre")]) $
             renderInner source }
-instance Monoid a => Layout.FlowText (Flow a) where
-    type TextStyle (Flow a) = TextStyle
+instance Monoid a => Layout.FlowText Style (Flow a) where
     text str = Flow {
         hasSpace = True,
         renderInner =
-            let style = textStyleToCss ?textStyle
+            let style = isolateTextStyle ?style
             in encloseFor "span" style $ fromString str }
 instance Monoid a => Layout.FlowSpace Length (Flow a) where
     strongSpace len = Flow {
         hasSpace = False,
-        renderInner = enclose "span" [
+        renderInner = enclose "span" (listToStyle [
             ("display", "inline-block"),
-            ("width", toCss len)] [] "" }
-
--- | A style for text within a 'Flow'.
-data TextStyle = TextStyle {
-    textColor :: Maybe Color,
-    textFontSize :: Maybe Length }
-instance Style TextStyle where
-    deft = TextStyle {
-        textColor = Nothing,
-        textFontSize = Nothing }
-instance AttrColor Color TextStyle where
-    color c style = style { textColor = Just c }
-instance AttrFontSize Length TextStyle where
-    fontSize h style = style { textFontSize = Just h }
-
--- | Converts a 'TextStyle' into a list of CSS attributes.
-textStyleToCss :: TextStyle -> [(String, String)]
-textStyleToCss style = catMaybes [
-    (\color -> ("color", toCss color)) <$> textColor style,
-    (\size -> ("font-size", toCss size)) <$> textFontSize style]
+            ("width", toCss len)]) mempty "" }
 
 -- | A possible alignment for a flow.
 newtype Alignment = Alignment String

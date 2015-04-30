@@ -34,9 +34,6 @@ response input = case filter ((=~ input) . snd) $ zip [1 ..] planets of
 
 main :: IO ()
 main = displayHtmlWidget $
-    withDefaultTextStyle $
-    withDefaultTextBoxStyle $
-    withDefaultButtonStyle $
     declare (out "response") ((\(inputB :: IO.Behavior String) (checkE :: IO.Event ()) ->
         accumB "" ((\input _ _ -> response input) <$> inputB <@> checkE))
         <$> inp "input" <*> inp "check") $

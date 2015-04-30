@@ -30,11 +30,11 @@ type Space = Width
 type Word f = f (Color, Point) -> Paint f
 
 -- | A possible style for text in a flow.
-data TextStyle = TextStyle { textColor :: Color }
-instance AttrColor Color TextStyle where
-    color c style = style { textColor = c }
+data TextStyle = TextStyle { getTextColor :: Color }
+instance AttrTextColor Color TextStyle where
+    textColor c style = style { getTextColor = c }
 instance Style TextStyle where
-    deft = TextStyle { textColor = snd defaultAppearance }
+    deft = TextStyle { getTextColor = snd defaultAppearance }
 
 -- | A figure, based in the terminal, which is linear and can be broken up at
 -- certain points, much like text.
@@ -52,10 +52,9 @@ instance Applicative f => Layout.FlowSpace Width (Flow f) where
     strongSpace width = res where
         paint (back, offset) = Draw.space back offset width
         res = Flow 0 [(toPaint . (paint <$>), pure width, 0)]
-instance Applicative f => Layout.FlowText (Flow f) where
-    type TextStyle (Flow f) = TextStyle
+instance Applicative f => Layout.FlowText TextStyle (Flow f) where
     tightText str = res where
-        fore = textColor ?textStyle
+        fore = getTextColor ?style
         width = Width $ length str
         paint (back, offset) = Draw.string (back, fore) offset str
         res = Flow 0 [(toPaint . (paint <$>), pure width, 0)]

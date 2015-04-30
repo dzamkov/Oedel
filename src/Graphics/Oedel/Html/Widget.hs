@@ -72,12 +72,12 @@ instance (ReactiveState e, Monoid a) => Monoid (Widget e Flow a) where
     mempty = augment mempty
     mappend = compose mappend
 instance (ReactiveState e, Monoid a) => Layout.Flow (Widget e Flow a) where
-        tight = decorate Layout.tight
-instance (ReactiveState e, Monoid a) => Layout.FlowText (Widget e Flow a) where
-    type TextStyle (Widget e Flow a) = Layout.TextStyle (Flow a)
-    text = augment . Layout.text
+    tight = decorate Layout.tight
+instance (ReactiveState e, Monoid a)
+    => Layout.FlowText Style (Widget e Flow a) where
+        text = augment . Layout.text
 instance (ReactiveState e, Monoid a, f ~ I e)
-    => Layout.FlowTextDyn (Oedel.InputDyn f a) (Widget e Flow a) where
+    => Layout.FlowTextDyn (Oedel.InputDyn f a) Style (Widget e Flow a) where
         tightTextDyn inp = Widget $ \env _ ->
             return ((Layout.tightText :: String -> Flow ()) <$>
                 fromMaybe (pure "") (Oedel.readEnv (Oedel.undyn inp) env),
@@ -116,8 +116,7 @@ instance (ReactiveState e)
                     value <- cons
                     return (nEnv' <> Oedel.putEnv output value)
             return (fig, nEnv)
-instance (ReactiveState e) => Oedel.WidgetButton e (Widget e Flow) where
-    type ButtonStyle (Widget e Flow) = ()
+instance (ReactiveState e) => Oedel.WidgetButton Style e (Widget e Flow) where
     button output (Widget inner) = Widget $ \env post -> do
         (innerFig, iEnv) <- inner env $ (\(p, (m, _)) -> (p, m)) <$> post
         let fig = (\innerFig -> Flow {
@@ -139,8 +138,7 @@ instance (ReactiveState e) => Oedel.WidgetButton e (Widget e Flow) where
                         _ -> Nothing) <$> post
             nEnv = iEnv <> nEnv'
         return (fig, nEnv)
-instance (ReactiveState e) => Oedel.WidgetTextBox e (Widget e Flow) where
-    type TextBoxStyle (Widget e Flow) = ()
+instance (ReactiveState e) => Oedel.WidgetTextBox Style e (Widget e Flow) where
     textBox output = Widget $ \_ post -> do
         let fig = Flow {
                 Flow.hasSpace = False,

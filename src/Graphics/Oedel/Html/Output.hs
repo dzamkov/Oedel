@@ -1,6 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE RankNTypes #-}
 module Graphics.Oedel.Html.Output where
 
+import Graphics.Oedel.Style (withDefaultStyle)
 import Graphics.Oedel.Html.Base
 import Graphics.Oedel.Html.Block (Block)
 import qualified Graphics.Oedel.Html.Block as Block
@@ -26,13 +29,7 @@ import Control.Monad (void)
 -- | Converts the given HTML block into a text HTML representation.
 blockToHtml :: Block a -> (Text, a)
 blockToHtml block = res where
-    absolute = Block.Absolute {
-        Block.left = mempty,
-        Block.top = mempty,
-        Block.right = mempty,
-        Block.bottom = mempty }
-    position = Block.PAbsolute absolute
-    (builder, value) = runHtmlFull $ Block.render block position
+    (builder, value) = runHtmlFull $ Block.render block mempty Block.dock
     res = (toLazyText builder, value)
 
 -- | Creates and binds a socket (for TCP) for any port.
@@ -47,8 +44,8 @@ bindAny = do
 
 -- | Opens a browser to display the given static HTML block. This returns
 -- immediately after the browser has successfully opened the page.
-displayHtmlStatic :: Block () -> IO ()
-displayHtmlStatic block = do
+displayHtmlStatic :: ((?style :: Style) => Block ()) -> IO ()
+displayHtmlStatic block = withDefaultStyle $ do
     shutdown <- newEmptyMVar
     sock <- bindAny
     port <- socketPort sock
@@ -75,8 +72,10 @@ parsePost = Map.fromList .
 -- | Opens a browser to display the given HTML widget and allow the user
 -- to interact with it. This returns when the user pressed "enter"
 -- in the terminal.
-displayHtmlWidget :: (Monoid a) => Widget IO.Event Block a -> IO ()
-displayHtmlWidget widget = do
+displayHtmlWidget :: (Monoid a)
+    => ((?style :: Style) => Widget IO.Event Block a)
+    -> IO ()
+displayHtmlWidget widget = withDefaultStyle $ do
     sock <- bindAny
     port <- socketPort sock
     (post, makePost) <- spawnE

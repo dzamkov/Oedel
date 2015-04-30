@@ -5,9 +5,7 @@ import qualified Control.Reactive.IO as IO
 
 main :: IO ()
 main = displayHtmlWidget $
-    withDefaultTextStyle $
-    withDefaultButtonStyle $
-    withTextStyle (fontSize 20) $
+    withStyle (fontSize 20) $
     inset $ setHeight 100 $ block center $
     declare (out "count") ((\upE downE ->
         let add = (+ 1) <$ (upE :: IO.Event ())
